@@ -36,7 +36,10 @@ python3 -m venv ~/rl_env
 # 3. Activación del entorno virtual
 source ~/rl_env/bin/activate
 
-# 4. Instalación de librerías esenciales
+# 4. Crear el archivo de dependencias (ESTO ES LO QUE FALTABA)
+echo "numpy>=1.24.0" > requirements.txt
+
+# 5. Instalación de librerías esenciales
 pip install --upgrade pip
 pip install -r requirements.txt
 
