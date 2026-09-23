@@ -22,17 +22,6 @@ Guía paso a paso para el despliegue, simulación estocástica y entrenamiento d
 
 ---
 
-## Fase 0: Limpieza total de procesos residuales
-Para restaurar el entorno y liberar memoria RAM antes de iniciar:
-
-```bash
-deactivate 2>/dev/null
-killall -9 python python3 2>/dev/null
-
-```
-
----
-
 ## Fase 1: Configuración en Ubuntu (WSL2) y Entorno Virtual `rl_env`
 
 En la terminal de **Ubuntu (WSL2)**:
