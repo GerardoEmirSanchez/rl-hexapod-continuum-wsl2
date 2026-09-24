@@ -27,6 +27,26 @@ Guía paso a paso para el despliegue, simulación estocástica y entrenamiento d
 En la terminal de **Ubuntu (WSL2)**:
 
 ```bash
+# 1. Crear y entrar al directorio del repositorio
+mkdir -p ~/cyberphysical-rl-continuum && cd ~/cyberphysical-rl-continuum
+
+# 2. Generar archivo de dependencias
+cat << 'EOF' > requirements.txt
+numpy>=1.24.0
+EOF
+
+# 3. Generar .gitignore
+cat << 'EOF' > .gitignore
+__pycache__/
+*.pyc
+*.pyo
+.env
+rl_env/
+.vscode/
+EOF
+```
+
+```bash
 # 1. Dependencias base del sistema
 sudo apt update && sudo apt install -y python3-pip python3-venv python3-dev
 
