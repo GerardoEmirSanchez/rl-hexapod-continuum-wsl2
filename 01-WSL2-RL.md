@@ -403,8 +403,10 @@ EOF
 git add M9_s1_caminata_aleatoria.py M9_s1_mini_reto_estudiantes.py M9_s1_mini_reto_resuelto.py
 git commit -m "fix: corregir indentacion estricta en scripts de sesion 1" 2>/dev/null || true
 ```
+
+Ejecución inmediata para validación
+
 ```
-# Ejecución inmediata para validación
 python M9_s1_caminata_aleatoria.py
 ```
 
