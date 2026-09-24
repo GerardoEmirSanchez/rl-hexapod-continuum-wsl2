@@ -276,15 +276,104 @@ python M9_s1_caminata_aleatoria.py
 # 6. Generar Script 2: Plantilla de Mini-Retos para Alumnos
 
 ```
+cat << 'EOF' > M9_s1_mini_reto_resuelto.py
+#!/usr/bin/env python3
+"""
+==============================================================================
+Sistemas Ciberfísicos — Módulo 9: Aprendizaje por Refuerzo
+Sesión 1: Solución Oficial del Mini-Reto Hands-On
+==============================================================================
+"""
+
+import time
+import random
+import sys
+
+POS_INICIAL = 0
+POS_META = 10
+POS_MIN = 0
+POS_MAX = 12
+
+def transicion_calibrada_reto(posicion_actual, accion):
+    desplazamiento = 0
+    if accion == 0:
+        desplazamiento = -1
+    elif accion == 2:
+        desplazamiento = 1
+        
+    # RETO 1: Resbalón al 40% (piso encerado)
+    if random.random() < 0.40 and accion != 1:
+        desplazamiento = 0
+        
+    nueva_pos = posicion_actual + desplazamiento
+    nueva_pos = max(POS_MIN, min(POS_MAX, nueva_pos))
+    
+    # RETO 2: Penalización por retroceso
+    if nueva_pos == POS_META:
+        recompensa = 100.0
+        terminado = True
+    elif nueva_pos > POS_META:
+        recompensa = -50.0
+        terminado = True
+    else:
+        recompensa = -5.0 if accion == 0 else -1.0
+        terminado = False
+        
+    return nueva_pos, recompensa, terminado
+
+def main():
+    exitos = 0
+    colisiones = 0
+    timeouts = 0
+    total_episodios = 20
+    
+    print("\n" + "="*75)
+    print(" EVALUACIÓN ESTADÍSTICA DEL MINI-RETO (20 EPISODIOS CON PERTURBACIONES)")
+    print("="*75)
+    
+    for ep in range(1, total_episodios + 1):
+        pos = POS_INICIAL
+        terminado = False
+        pasos = 0
+        
+        while not terminado and pasos < 40:
+            pasos += 1
+            accion = random.choice([0, 1, 2])
+            pos, r, terminado = transicion_calibrada_reto(pos, accion)
+            
+        if pos == POS_META:
+            exitos += 1
+        elif pos > POS_META:
+            colisiones += 1
+        else:
+            timeouts += 1
+            
+    print(f"\nResultados tras {total_episodios} pruebas del agente ciego:")
+    print(f" -> Tasa de Éxitos:     {(exitos / total_episodios) * 100:.1f}% ({exitos}/{total_episodios})")
+    print(f" -> Tasa de Colisiones: {(colisiones / total_episodios) * 100:.1f}% ({colisiones}/{total_episodios})")
+    print(f" -> Tasa de Timeouts:   {(timeouts / total_episodios) * 100:.1f}% ({timeouts}/{total_episodios})")
+    print("\nConclusión Técnica:")
+    print("Bajo fricción degradada y penalización dinámica, la probabilidad de éxito")
+    print("de una política aleatoria cae drásticamente. Se requiere aprendizaje formal.")
+    print("="*75 + "\n")
+
+if __name__ == '__main__':
+    main()
+EOF
+```
+
+# 7. Generar Script 3: Mini-Reto Resuelto Oficial
+
+```
 cat << 'EOF' > M9_s1_mini_reto_estudiantes.py
 #!/usr/bin/env python3
 """
-
-# MR3005C: Sistemas Ciberfísicos — Módulo 9: Aprendizaje por Refuerzo
+==============================================================================
+Sistemas Ciberfísicos — Módulo 9: Aprendizaje por Refuerzo
 Sesión 1: Mini-Reto Hands-On — Calibración de Perturbaciones Físicas
+==============================================================================
 
 INSTRUCCIONES:
-
 1. Reto 1: Modificar probabilidad_resbalon a 0.40 (40%).
 2. Reto 2: Si accion == 0 (retroceder), asignar recompensa de -5.0.
 """
@@ -299,169 +388,76 @@ POS_MIN = 0
 POS_MAX = 12
 
 def transicion_ambiente_estudiantes(posicion_actual, accion):
-desplazamiento = 0
-if accion == 0:
-desplazamiento = -1
-elif accion == 2:
-desplazamiento = 1
-
-
-# [RETO 1]: Modificar a 0.40
-probabilidad_resbalon = 0.15
-if random.random() < probabilidad_resbalon and accion != 1:
     desplazamiento = 0
+    if accion == 0:
+        desplazamiento = -1
+    elif accion == 2:
+        desplazamiento = 1
+        
+    # [RETO 1]: Modificar a 0.40
+    probabilidad_resbalon = 0.15
+    if random.random() < probabilidad_resbalon and accion != 1:
+        desplazamiento = 0
+        
+    nueva_pos = posicion_actual + desplazamiento
+    nueva_pos = max(POS_MIN, min(POS_MAX, nueva_pos))
     
-nueva_pos = posicion_actual + desplazamiento
-nueva_pos = max(POS_MIN, min(POS_MAX, nueva_pos))
-
-# [RETO 2]: Modificar penalización de retroceso
-if nueva_pos == POS_META:
-    recompensa = 100.0
-    terminado = True
-elif nueva_pos > POS_META:
-    recompensa = -50.0
-    terminado = True
-else:
-    # TODO: Asignar -5.0 si accion == 0, caso contrario -1.0
-    recompensa = -1.0
-    terminado = False
-    
-return nueva_pos, recompensa, terminado
-
-
+    # [RETO 2]: Modificar penalización de retroceso
+    if nueva_pos == POS_META:
+        recompensa = 100.0
+        terminado = True
+    elif nueva_pos > POS_META:
+        recompensa = -50.0
+        terminado = True
+    else:
+        # TODO: Asignar -5.0 si accion == 0, caso contrario -1.0
+        recompensa = -1.0
+        terminado = False
+        
+    return nueva_pos, recompensa, terminado
 
 def main():
-total_episodios = 20
-exitos = 0
-colisiones = 0
-timeouts = 0
-
-print("\n" + "="*70)
-print(" EVALUACIÓN ESTADÍSTICA DE PERTURBACIONES (20 EPISODIOS)")
-print("="*70)
-
-for ep in range(1, total_episodios + 1):
-    pos = POS_INICIAL
-    terminado = False
-    pasos = 0
+    total_episodios = 20
+    exitos = 0
+    colisiones = 0
+    timeouts = 0
     
-    while not terminado and pasos < 40:
-        pasos += 1
-        accion = random.choice([0, 1, 2])
-        pos, r, terminado = transicion_ambiente_estudiantes(pos, accion)
+    print("\n" + "="*70)
+    print(" EVALUACIÓN ESTADÍSTICA DE PERTURBACIONES (20 EPISODIOS)")
+    print("="*70)
+    
+    for ep in range(1, total_episodios + 1):
+        pos = POS_INICIAL
+        terminado = False
+        pasos = 0
         
-    if pos == POS_META:
-        exitos += 1
-    elif pos > POS_META:
-        colisiones += 1
-    else:
-        timeouts += 1
-        
-print(f"\nResultados del Agente sobre {total_episodios} Episodios:")
-print(f" * Éxitos (Acople):      {exitos} ({(exitos/total_episodios)*100:.1f}%)")
-print(f" * Colisiones (Impacto): {colisiones} ({(colisiones/total_episodios)*100:.1f}%)")
-print(f" * Timeouts:             {timeouts} ({(timeouts/total_episodios)*100:.1f}%)")
-print("="*70 + "\n")
+        while not terminado and pasos < 40:
+            pasos += 1
+            accion = random.choice([0, 1, 2])
+            pos, r, terminado = transicion_ambiente_estudiantes(pos, accion)
+            
+        if pos == POS_META:
+            exitos += 1
+        elif pos > POS_META:
+            colisiones += 1
+        else:
+            timeouts += 1
+            
+    print(f"\nResultados del Agente sobre {total_episodios} Episodios:")
+    print(f" * Éxitos (Acople):      {exitos} ({(exitos/total_episodios)*100:.1f}%)")
+    print(f" * Colisiones (Impacto): {colisiones} ({(colisiones/total_episodios)*100:.1f}%)")
+    print(f" * Timeouts:             {timeouts} ({(timeouts/total_episodios)*100:.1f}%)")
+    print("="*70 + "\n")
 
-
-if **name** == '**main**':
-main()
+if __name__ == '__main__':
+    main()
 EOF
 ```
 
-# 7. Generar Script 3: Mini-Reto Resuelto Oficial
-
 ```
-cat << 'EOF' > M9_s1_mini_reto_resuelto.py
-#!/usr/bin/env python3
-"""
-
-# MR3005C: Sistemas Ciberfísicos — Módulo 9: Aprendizaje por Refuerzo
-Sesión 1: Solución Oficial del Mini-Reto Hands-On
-
-"""
-
-import time
-import random
-import sys
-
-POS_INICIAL = 0
-POS_META = 10
-POS_MIN = 0
-POS_MAX = 12
-
-def transicion_calibrada_reto(posicion_actual, accion):
-desplazamiento = 0
-if accion == 0:
-desplazamiento = -1
-elif accion == 2:
-desplazamiento = 1
-
-
-# RETO 1: Resbalón al 40%
-if random.random() < 0.40 and accion != 1:
-    desplazamiento = 0
-    
-nueva_pos = posicion_actual + desplazamiento
-nueva_pos = max(POS_MIN, min(POS_MAX, nueva_pos))
-
-# RETO 2: Penalización por retroceso
-if nueva_pos == POS_META:
-    recompensa = 100.0
-    terminado = True
-elif nueva_pos > POS_META:
-    recompensa = -50.0
-    terminado = True
-else:
-    recompensa = -5.0 if accion == 0 else -1.0
-    terminado = False
-    
-return nueva_pos, recompensa, terminado
-
-
-
-def main():
-exitos = 0
-colisiones = 0
-timeouts = 0
-total_episodios = 20
-
-print("\n" + "="*75)
-print(" EVALUACIÓN ESTADÍSTICA DEL MINI-RETO (20 EPISODIOS CON PERTURBACIONES)")
-print("="*75)
-
-for ep in range(1, total_episodios + 1):
-    pos = POS_INICIAL
-    terminado = False
-    pasos = 0
-    
-    while not terminado and pasos < 40:
-        pasos += 1
-        accion = random.choice([0, 1, 2])
-        pos, r, terminado = transicion_calibrada_reto(pos, accion)
-        
-    if pos == POS_META:
-        exitos += 1
-    elif pos > POS_META:
-        colisiones += 1
-    else:
-        timeouts += 1
-        
-print(f"\nResultados tras {total_episodios} pruebas del agente ciego:")
-print(f" -> Tasa de Éxitos:     {(exitos / total_episodios) * 100:.1f}% ({exitos}/{total_episodios})")
-print(f" -> Tasa de Colisiones: {(colisiones / total_episodios) * 100:.1f}% ({colisiones}/{total_episodios})")
-print(f" -> Tasa de Timeouts:   {(timeouts / total_episodios) * 100:.1f}% ({timeouts}/{total_episodios})")
-print("\nConclusión Técnica:")
-print("Bajo fricción degradada y penalización dinámica, la probabilidad de éxito")
-print("de una política aleatoria cae drásticamente. Se requiere aprendizaje formal.")
-print("="*75 + "\n")
-
-
-
-if **name** == '**main**':
-main()
-EOF
+python M9_s1_mini_reto_estudiantes
 ```
+
 
 # 8. Configurar entorno virtual e instalar dependencias
 
