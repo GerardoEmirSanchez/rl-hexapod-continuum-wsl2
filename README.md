@@ -18,40 +18,6 @@ __pycache__/
 rl_env/
 .vscode/
 EOF
-
-# 4. Generar README.md oficial
-cat << 'EOF' > README.md
-# Control por Aprendizaje por Refuerzo en WSL2 — Módulo 9: Fundamentos de RL
-
-Guía para el despliegue, simulación estocástica y entrenamiento de agentes de aprendizaje por refuerzo tabular sobre arquitecturas robóticas continuas y móviles en WSL2 (Ubuntu), optimizado para estaciones de trabajo con recursos de cómputo limitados.
-
----
-
-## Índice de Contenidos
-1. [Contexto del Sistema Ciberfísico](#contexto-del-sistema-ciberfísico)
-2. [Fase 0: Limpieza total de procesos residuales](#fase-0-limpieza-total-de-procesos-residuales)
-3. [Fase 1: Configuración en Ubuntu (WSL2) y Entorno Virtual `rl_env`](#fase-1-configuración-en-ubuntu-wsl2-y-entorno-virtual-rl_env)
-4. [Fase 2: Estructura del Repositorio](#fase-2-estructura-del-repositorio)
-5. [Fase 3: Scripts de la Sesión 1](#fase-3-scripts-de-la-sesión-1)
-6. [Fase 4: Ejecución, Inspección ANSI y Validación](#fase-4-ejecución-inspección-ansi-y-validación)
-7. [Fase 5: Solución a Problemas Frecuentes (Troubleshooting)](#fase-5-solución-a-problemas-frecuentes-troubleshooting)
-
----
-
-## Contexto del Sistema Ciberfísico
-* **Reto:** Control de aproximación y posición de un robot continuum flexible accionado por tendones montado sobre un robot móvil hexápodo para interacción con una gaveta de herramientas industrial mediante métodos basados en datos.
-* **Socio de Investigación:** Chalmers University of Technology (Department of Electrical Engineering).
-* **Restricción de Renderizado:** Cero ventanas nativas bloqueantes (`cv2.imshow` o `pygame.display`) para evitar fugas de memoria o congelamientos de WSLg; ejecución matricial en memoria y visualización en consola ANSI de ultra-bajo consumo (<15 MB RAM, <1% CPU).
-
----
-
-## Fase 0: Limpieza total de procesos residuales
-Para restaurar el entorno y liberar memoria RAM antes de iniciar:
-
-```bash
-deactivate 2>/dev/null
-killall -9 python python3 2>/dev/null
-
 ```
 
 ---
@@ -141,7 +107,9 @@ EOF
 
 # 5. Generar Script 1: Caminata Aleatoria (Línea Base)
 
-# cat << 'EOF' > M9_s1_caminata_aleatoria.py
+
+```
+cat << 'EOF' > M9_s1_caminata_aleatoria.py
 #!/usr/bin/env python3
 """
 
@@ -168,7 +136,6 @@ desplazamiento = -1
 elif accion == 2:
 desplazamiento = 1
 
-```
 if random.random() < 0.15 and accion != 1:
     desplazamiento = 0 # Pérdida de tracción en las patas
     
@@ -187,7 +154,7 @@ else:
     
 return nueva_pos, recompensa, terminado
 
-```
+
 
 def render_consola_ansi(pos, paso, recompensa_acumulada):
 pista = ["·"] * (POS_MAX + 1)
@@ -195,12 +162,12 @@ pista[POS_META] = "G" # Gaveta (Goal)
 if pos <= POS_MAX:
 pista[pos] = "H"  # Hexápodo
 
-```
+
 linea_visual = "".join(pista)
 sys.stdout.write(f"\r[Paso {paso:02d}] Pista: [{linea_visual}] | Pos: {pos:02d} | Retorno Acumulado: {recompensa_acumulada:06.1f}")
 sys.stdout.flush()
 
-```
+
 
 def main():
 print("\n" + "="*75)
@@ -208,7 +175,6 @@ print(" SIMULACIÓN DE AGENTE ALEATORIO EN LÍNEA BASE (SESIÓN 1)")
 print(" Meta: Llevar el Hexápodo (H) hacia la Gaveta (G) sin colisionar")
 print("="*75 + "\n")
 
-```
 episodios_totales = 5
 for ep in range(1, episodios_totales + 1):
     pos = POS_INICIAL
@@ -237,15 +203,17 @@ for ep in range(1, episodios_totales + 1):
         
 print("\n[INFO] Simulación concluida con éxito.\n")
 
-```
+
 
 if **name** == '**main**':
 main()
 EOF
+```
 
 # 6. Generar Script 2: Plantilla de Mini-Retos para Alumnos
 
-# cat << 'EOF' > M9_s1_mini_reto_estudiantes.py
+```
+cat << 'EOF' > M9_s1_mini_reto_estudiantes.py
 #!/usr/bin/env python3
 """
 
@@ -274,7 +242,7 @@ desplazamiento = -1
 elif accion == 2:
 desplazamiento = 1
 
-```
+
 # [RETO 1]: Modificar a 0.40
 probabilidad_resbalon = 0.15
 if random.random() < probabilidad_resbalon and accion != 1:
@@ -297,7 +265,7 @@ else:
     
 return nueva_pos, recompensa, terminado
 
-```
+
 
 def main():
 total_episodios = 20
@@ -305,7 +273,6 @@ exitos = 0
 colisiones = 0
 timeouts = 0
 
-```
 print("\n" + "="*70)
 print(" EVALUACIÓN ESTADÍSTICA DE PERTURBACIONES (20 EPISODIOS)")
 print("="*70)
@@ -333,15 +300,16 @@ print(f" * Colisiones (Impacto): {colisiones} ({(colisiones/total_episodios)*100
 print(f" * Timeouts:             {timeouts} ({(timeouts/total_episodios)*100:.1f}%)")
 print("="*70 + "\n")
 
-```
 
 if **name** == '**main**':
 main()
 EOF
+```
 
 # 7. Generar Script 3: Mini-Reto Resuelto Oficial
 
-# cat << 'EOF' > M9_s1_mini_reto_resuelto.py
+```
+cat << 'EOF' > M9_s1_mini_reto_resuelto.py
 #!/usr/bin/env python3
 """
 
@@ -366,7 +334,7 @@ desplazamiento = -1
 elif accion == 2:
 desplazamiento = 1
 
-```
+
 # RETO 1: Resbalón al 40%
 if random.random() < 0.40 and accion != 1:
     desplazamiento = 0
@@ -387,7 +355,7 @@ else:
     
 return nueva_pos, recompensa, terminado
 
-```
+
 
 def main():
 exitos = 0
@@ -395,7 +363,6 @@ colisiones = 0
 timeouts = 0
 total_episodios = 20
 
-```
 print("\n" + "="*75)
 print(" EVALUACIÓN ESTADÍSTICA DEL MINI-RETO (20 EPISODIOS CON PERTURBACIONES)")
 print("="*75)
@@ -426,27 +393,28 @@ print("Bajo fricción degradada y penalización dinámica, la probabilidad de é
 print("de una política aleatoria cae drásticamente. Se requiere aprendizaje formal.")
 print("="*75 + "\n")
 
-```
+
 
 if **name** == '**main**':
 main()
 EOF
+```
 
 # 8. Configurar entorno virtual e instalar dependencias
 
+```bash
 python3 -m venv ~/rl_env
 source ~/rl_env/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
+```
 
 # 9. Inicializar Git y realizar el commit inicial
 
+```
 git init
 git add .
 git commit -m "feat: inicializacion de repositorio para modulo 9 (sesion 1)"
 
 echo -e "\n[OK] Repositorio inicializado y listo en ~/cyberphysical-rl-continuum con entorno (rl_env) activo."
-
-```
-
 ```
