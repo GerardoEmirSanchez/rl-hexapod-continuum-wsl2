@@ -6,12 +6,11 @@ Guía paso a paso para el despliegue, simulación estocástica y entrenamiento d
 
 ## Índice de Contenidos
 1. [Contexto del Sistema Ciberfísico](#contexto-del-sistema-ciberfísico)
-2. [Fase 0: Limpieza total de procesos residuales](#fase-0-limpieza-total-de-procesos-residuales)
-3. [Fase 1: Configuración en Ubuntu (WSL2) y Entorno Virtual `rl_env`](#fase-1-configuración-en-ubuntu-wsl2-y-entorno-virtual-rl_env)
-4. [Fase 2: Estructura del Repositorio](#fase-2-estructura-del-repositorio)
-5. [Fase 3: Scripts de la Sesión 1](#fase-3-scripts-de-la-sesión-1)
-6. [Fase 4: Ejecución, Inspección ANSI y Validación](#fase-4-ejecución-inspección-ansi-y-validación)
-7. [Fase 5: Solución a Problemas Frecuentes (Troubleshooting)](#fase-5-solución-a-problemas-frecuentes-troubleshooting)
+2. [Fase 1: Configuración en Ubuntu (WSL2) y Entorno Virtual `rl_env`](#fase-1-configuración-en-ubuntu-wsl2-y-entorno-virtual-rl_env)
+3. [Fase 2: Estructura del Repositorio](#fase-2-estructura-del-repositorio)
+4. [Fase 3: Scripts de la Sesión 1](#fase-3-scripts-de-la-sesión-1)
+5. [Fase 4: Ejecución, Inspección ANSI y Validación](#fase-4-ejecución-inspección-ansi-y-validación)
+6. [Fase 5: Solución a Problemas Frecuentes (Troubleshooting)](#fase-5-solución-a-problemas-frecuentes-troubleshooting)
 
 ---
 
