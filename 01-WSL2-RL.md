@@ -136,7 +136,7 @@ cat << 'EOF' > M9_s1_caminata_aleatoria.py
 """
 ==============================================================================
 Sistemas Ciberfísicos — Módulo 9: Aprendizaje por Refuerzo
-Sesión 1: Bucle Agente-Ambiente y Política Aleatoria (Línea Base)
+Sesión 1: Bucle Agente-Ambiente y Diagnóstico de Telemetría (Línea Base)
 ==============================================================================
 """
 
@@ -144,10 +144,10 @@ import time
 import random
 import sys
 
-POS_INICIAL = 0        # Posición de inicio (lejos del cajón)
-POS_META = 10          # Punto de acople exacto frente al cajón
-POS_MIN = 0            # Límite trasero del área de trabajo
-POS_MAX = 12           # Zona de colisión (impacto mecánico contra la gaveta)
+POS_INICIAL = 0        # Inicio lejos de la gaveta
+POS_META = 10          # Punto de acople exacto
+POS_MIN = 0            # Límite trasero del área de pruebas
+POS_MAX = 12           # Zona de colisión física
 
 ACCIONES = {0: "RETROCEDER", 1: "DETENERSE", 2: "AVANZAR"}
 
@@ -158,250 +158,113 @@ def transicion_ambiente(posicion_actual, accion):
     elif accion == 2:
         desplazamiento = 1
         
+    # Modelado de fricción física: 15% de probabilidad de patinaje
+    resbalon = False
     if random.random() < 0.15 and accion != 1:
-        desplazamiento = 0  # Pérdida de tracción en las patas
+        desplazamiento = 0
+        resbalon = True
         
     nueva_pos = posicion_actual + desplazamiento
     nueva_pos = max(POS_MIN, min(POS_MAX, nueva_pos))
     
     if nueva_pos == POS_META:
-        recompensa = 100.0   # Acople completado
+        recompensa = 100.0
         terminado = True
     elif nueva_pos > POS_META:
-        recompensa = -50.0   # Colisión mecánica
+        recompensa = -50.0
         terminado = True
     else:
-        recompensa = -1.0    # Costo temporal por paso
+        recompensa = -1.0
         terminado = False
         
-    return nueva_pos, recompensa, terminado
+    return nueva_pos, recompensa, terminado, resbalon
 
-def render_consola_ansi(pos, paso, recompensa_acumulada):
-    pista = ["·"] * (POS_MAX + 1)
-    pista[POS_META] = "G"  # Gaveta (Goal)
-    if pos <= POS_MAX:
-        pista[pos] = "H"   # Hexápodo
-    
-    linea_visual = "".join(pista)
-    sys.stdout.write(f"\r[Paso {paso:02d}] Pista: [{linea_visual}] | Pos: {pos:02d} | Retorno Acumulado: {recompensa_acumulada:06.1f}")
-    sys.stdout.flush()
+def graficar_perfil_ascii(historial_pos):
+    """Genera una gráfica de posición vs tiempo en caracteres de terminal."""
+    lineas = []
+    print("\n   [Perfil Temporal de Posición: S_t a lo largo del Episodio]")
+    for nivel in range(POS_MAX, POS_MIN - 1, -1):
+        etiqueta = f"{nivel:02d} |"
+        fila = ""
+        for p in historial_pos:
+            if p == nivel:
+                fila += "█"
+            elif nivel == POS_META:
+                fila += "┄"  # Línea de meta de la gaveta
+            else:
+                fila += " "
+        lineas.append(f"{etiqueta}{fila}")
+    print("\n".join(lineas))
+    print("     " + "─" * len(historial_pos))
+    print(" t:  0" + " " * (len(historial_pos) - 6) + f"{len(historial_pos)-1:02d} pasos\n")
 
 def main():
     print("\n" + "="*75)
-    print(" SIMULACIÓN DE AGENTE ALEATORIO EN LÍNEA BASE (SESIÓN 1)")
+    print(" SIMULACIÓN Y TELEMETRÍA DE AGENTE ALEATORIO (LÍNEA BASE)")
     print(" Meta: Llevar el Hexápodo (H) hacia la Gaveta (G) sin colisionar")
-    print("="*75 + "\n")
+    print("="*75)
     
-    episodios_totales = 5
+    episodios_totales = 3
     for ep in range(1, episodios_totales + 1):
         pos = POS_INICIAL
         recompensa_acumulada = 0.0
         terminado = False
         paso = 0
         
-        print(f"\n--- INICIO DEL EPISODIO {ep} ---")
+        historial_pos = [pos]
+        conteo_acciones = {0: 0, 1: 0, 2: 0}
+        total_resbalones = 0
+        
+        print(f"\n>>> INICIANDO EPISODIO {ep}...")
         while not terminado and paso < 35:
             paso += 1
             accion = random.choice([0, 1, 2])
+            conteo_acciones[accion] += 1
             
-            pos, r, terminado = transicion_ambiente(pos, accion)
+            pos, r, terminado, resbalon = transicion_ambiente(pos, accion)
+            if resbalon:
+                total_resbalones += 1
+                
+            historial_pos.append(pos)
             recompensa_acumulada += r
             
-            render_consola_ansi(pos, paso, recompensa_acumulada)
-            time.sleep(0.08)
+            # Pista animada
+            pista = ["·"] * (POS_MAX + 1)
+            pista[POS_META] = "G"
+            if pos <= POS_MAX:
+                pista[pos] = "H"
+            linea_visual = "".join(pista)
+            alerta_resbalon = " [!RESBALÓN]" if resbalon else "            "
+            
+            sys.stdout.write(f"\r Paso {paso:02d} | [{linea_visual}] | Pos: {pos:02d} | Retorno: {recompensa_acumulada:06.1f}{alerta_resbalon}")
+            sys.stdout.flush()
+            time.sleep(0.06)
             
         print()
+        # Veredicto de control
         if pos == POS_META:
-            print(f" [RESULTADO EP {ep}]: ¡ÉXITO! Acople logrado en {paso} pasos. Retorno: {recompensa_acumulada:.1f}")
+            veredicto = "¡ÉXITO! Acople completado en la gaveta."
         elif pos > POS_META:
-            print(f" [RESULTADO EP {ep}]: ¡COLISIÓN! Impacto contra el cajón. Retorno: {recompensa_acumulada:.1f}")
+            veredicto = "¡COLISIÓN! Impacto contra el cajón metálico."
         else:
-            print(f" [RESULTADO EP {ep}]: TIEMPO AGOTADO (Timeout). Retorno: {recompensa_acumulada:.1f}")
+            veredicto = "TIEMPO AGOTADO (Timeout de batería)."
             
-    print("\n[INFO] Simulación concluida con éxito.\n")
-
-if __name__ == '__main__':
-    main()
-EOF
-
-# 2. Plantilla de Estudiantes (M9_s1_mini_reto_estudiantes.py) corregida
-cat << 'EOF' > M9_s1_mini_reto_estudiantes.py
-#!/usr/bin/env python3
-"""
-==============================================================================
-Sistemas Ciberfísicos — Módulo 9: Aprendizaje por Refuerzo
-Sesión 1: Mini-Reto Hands-On — Calibración de Perturbaciones Físicas
-==============================================================================
-
-INSTRUCCIONES:
-1. Reto 1: Modificar probabilidad_resbalon a 0.40 (40%).
-2. Reto 2: Si accion == 0 (retroceder), asignar recompensa de -5.0.
-"""
-
-import time
-import random
-import sys
-
-POS_INICIAL = 0
-POS_META = 10
-POS_MIN = 0
-POS_MAX = 12
-
-def transicion_ambiente_estudiantes(posicion_actual, accion):
-    desplazamiento = 0
-    if accion == 0:
-        desplazamiento = -1
-    elif accion == 2:
-        desplazamiento = 1
+        print(f"\n ┌─ Reporte Diagnóstico del Episodio {ep} ─────────────────────────┐")
+        print(f" │ Resultado:       {veredicto}")
+        print(f" │ Retorno G_0:     {recompensa_acumulada:.1f} puntos")
+        print(f" │ Pasos Totales:   {paso} / 35")
+        print(f" │ Acciones:        Avanzar: {conteo_acciones[2]} | Retroceder: {conteo_acciones[0]} | Paro: {conteo_acciones[1]}")
+        print(f" │ Pérdida Tracción:{total_resbalones} resbalones mecánicos ({total_resbalones/paso*100:.1f}% de pasos)")
+        print(f" └───────────────────────────────────────────────────────────────┘")
         
-    # [RETO 1]: Modificar a 0.40
-    probabilidad_resbalon = 0.15
-    if random.random() < probabilidad_resbalon and accion != 1:
-        desplazamiento = 0
+        # Mostrar el gráfico ASCII de la trayectoria
+        graficar_perfil_ascii(historial_pos)
         
-    nueva_pos = posicion_actual + desplazamiento
-    nueva_pos = max(POS_MIN, min(POS_MAX, nueva_pos))
-    
-    # [RETO 2]: Modificar penalización de retroceso
-    if nueva_pos == POS_META:
-        recompensa = 100.0
-        terminado = True
-    elif nueva_pos > POS_META:
-        recompensa = -50.0
-        terminado = True
-    else:
-        # TODO: Asignar -5.0 si accion == 0, caso contrario -1.0
-        recompensa = -1.0
-        terminado = False
-        
-    return nueva_pos, recompensa, terminado
-
-def main():
-    total_episodios = 20
-    exitos = 0
-    colisiones = 0
-    timeouts = 0
-    
-    print("\n" + "="*70)
-    print(" EVALUACIÓN ESTADÍSTICA DE PERTURBACIONES (20 EPISODIOS)")
-    print("="*70)
-    
-    for ep in range(1, total_episodios + 1):
-        pos = POS_INICIAL
-        terminado = False
-        pasos = 0
-        
-        while not terminado and pasos < 40:
-            pasos += 1
-            accion = random.choice([0, 1, 2])
-            pos, r, terminado = transicion_ambiente_estudiantes(pos, accion)
-            
-        if pos == POS_META:
-            exitos += 1
-        elif pos > POS_META:
-            colisiones += 1
-        else:
-            timeouts += 1
-            
-    print(f"\nResultados del Agente sobre {total_episodios} Episodios:")
-    print(f" * Éxitos (Acople):      {exitos} ({(exitos/total_episodios)*100:.1f}%)")
-    print(f" * Colisiones (Impacto): {colisiones} ({(colisiones/total_episodios)*100:.1f}%)")
-    print(f" * Timeouts:             {timeouts} ({(timeouts/total_episodios)*100:.1f}%)")
-    print("="*70 + "\n")
-
-if __name__ == '__main__':
-    main()
-EOF
-
-# 3. Solución Docente (M9_s1_mini_reto_resuelto.py) corregida
-cat << 'EOF' > M9_s1_mini_reto_resuelto.py
-#!/usr/bin/env python3
-"""
-==============================================================================
-Sistemas Ciberfísicos — Módulo 9: Aprendizaje por Refuerzo
-Sesión 1: Solución Oficial del Mini-Reto Hands-On
-==============================================================================
-"""
-
-import time
-import random
-import sys
-
-POS_INICIAL = 0
-POS_META = 10
-POS_MIN = 0
-POS_MAX = 12
-
-def transicion_calibrada_reto(posicion_actual, accion):
-    desplazamiento = 0
-    if accion == 0:
-        desplazamiento = -1
-    elif accion == 2:
-        desplazamiento = 1
-        
-    # RETO 1: Resbalón al 40%
-    if random.random() < 0.40 and accion != 1:
-        desplazamiento = 0
-        
-    nueva_pos = posicion_actual + desplazamiento
-    nueva_pos = max(POS_MIN, min(POS_MAX, nueva_pos))
-    
-    # RETO 2: Penalización por retroceso
-    if nueva_pos == POS_META:
-        recompensa = 100.0
-        terminado = True
-    elif nueva_pos > POS_META:
-        recompensa = -50.0
-        terminado = True
-    else:
-        recompensa = -5.0 if accion == 0 else -1.0
-        terminado = False
-        
-    return nueva_pos, recompensa, terminado
-
-def main():
-    exitos = 0
-    colisiones = 0
-    timeouts = 0
-    total_episodios = 20
-    
-    print("\n" + "="*75)
-    print(" EVALUACIÓN ESTADÍSTICA DEL MINI-RETO (20 EPISODIOS CON PERTURBACIONES)")
-    print("="*75)
-    
-    for ep in range(1, total_episodios + 1):
-        pos = POS_INICIAL
-        terminado = False
-        pasos = 0
-        
-        while not terminado and pasos < 40:
-            pasos += 1
-            accion = random.choice([0, 1, 2])
-            pos, r, terminado = transicion_calibrada_reto(pos, accion)
-            
-        if pos == POS_META:
-            exitos += 1
-        elif pos > POS_META:
-            colisiones += 1
-        else:
-            timeouts += 1
-            
-    print(f"\nResultados tras {total_episodios} pruebas del agente ciego:")
-    print(f" -> Tasa de Éxitos:     {(exitos / total_episodios) * 100:.1f}% ({exitos}/{total_episodios})")
-    print(f" -> Tasa de Colisiones: {(colisiones / total_episodios) * 100:.1f}% ({colisiones}/{total_episodios})")
-    print(f" -> Tasa de Timeouts:   {(timeouts / total_episodios) * 100:.1f}% ({timeouts}/{total_episodios})")
-    print("\nConclusión Técnica:")
-    print("Bajo fricción degradada y penalización dinámica, la probabilidad de éxito")
-    print("de una política aleatoria cae drásticamente. Se requiere aprendizaje formal.")
     print("="*75 + "\n")
 
 if __name__ == '__main__':
     main()
 EOF
-
-# Actualizar el commit en Git
-git add M9_s1_caminata_aleatoria.py M9_s1_mini_reto_estudiantes.py M9_s1_mini_reto_resuelto.py
-git commit -m "fix: corregir indentacion estricta en scripts de sesion 1" 2>/dev/null || true
 ```
 
 Ejecución inmediata para validación
