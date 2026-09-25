@@ -1,0 +1,232 @@
+# MR3005C: Sistemas Ciberfísicos — Módulo 9: Fundamentos de Aprendizaje por Refuerzo
+
+## Sesión 2 (Continuación): De la Ecuación de Bellman a Deep Q-Networks (DQN) y Control Continuo
+
+**Horario de Sesión:** 20:00 – 21:20 hrs (80 minutos lectivos)
+**Institución y Socio Formador:** Tecnológico de Monterrey y Chalmers University of Technology
+**Plataforma de Ejecución:** Google Colab (Python 3, PyTorch, Matplotlib)
+## 1. Cronograma de Clase (20:00 – 21:20)
+
+|**Horario**|**Eje Temático**|**Dinámica y Entregable**|
+|---|---|---|
+|**20:00 – 20:25 (25 min)**|**Límites Tabulares y Arquitectura Deep Q-Network (DQN)**Los 4 retos del RL, aproximación de funciones $Q(s, a; \theta)$, función de pérdida y _Target Network_.|Deducción analítica en pizarrón de la pérdida de Bellman y gradiente estocástico.|
+|**20:25 – 20:45 (20 min)**|**Tensor Computation y Optimización con PyTorch**Autograd, hiperparámetros de red y ajuste del modelo lineal.|**Colab Celda 1:** Regresión y aproximación de valor con PyTorch.|
+|**20:45 – 21:05 (20 min)**|**Dinámica Mecatrónica Continua: El Péndulo Invertido**Modelado físico no lineal, discretización de Euler y formulación de estados.|**Colab Celda 2:** Simulador de lazo abierto vs. torque de control.|
+|**21:05 – 21:20 (15 min)**|**Mini-Reto Hands-On: Bellman Target en PyTorch**Cálculo del objetivo $y_i$ y pérdida MSE con red neuronal.|**Colab Celda 3:** Implementación por parejas y checklist de salida.|
+
+## 2. Límites del Control Tabular y Arquitectura Deep Q-Network (DQN) (20:00 – 20:25)
+
+### 2.1 La Maldición de la Dimensionalidad
+
+En las sesiones previas representamos la memoria del agente mediante una tabla bidimensional discreta $Q(s, a)$. Sin embargo, al controlar robots continuos o procesar video crudo proveniente de sensores CMOS (como la cámara Intel RealSense), el espacio de estados se vuelve continuo o de dimensión masiva:
+- Si la entrada es un cuadro de video de $210 \times 160$ píxeles en escala de grises con 256 niveles de intensidad, existen $256^{210 \times 160} \approx 10^{80,900}$ estados posibles.
+- Resulta imposible almacenar ni visitar cada celda de una tabla $Q$ tabular. Se requiere un **aproximador de funciones universal**.
+### 2.2 Los Cuatro Desafíos Críticos del Aprendizaje por Refuerzo
+
+A diferencia del aprendizaje supervisado clásico, el entrenamiento de agentes mediante RL sobre redes neuronales enfrenta cuatro problemas matemáticos y computacionales:
+1. **Señales de Recompensa Dispersas y Retardadas (_Sparse & Delayed Rewards_):** El robot ejecuta cientos de acciones motrices antes de recibir una retroalimentación escalar que confirme si la trayectoria fue adecuada.    
+2. **Correlación Temporal Extrema (_Highly Correlated States_):** El estado $S_{t+1}$ depende directamente de $S_t$. Esta naturaleza secuencial destruye la suposición fundamental de muestras independientes e idénticamente distribuidas (_i.i.d._), desestabilizando el entrenamiento.
+3. **Distribución No Estacionaria (_Non-Stationary Data Distribution_):** A medida que la red actualiza sus pesos, la política de control cambia, alterando completamente la región del espacio de estados que el robot explora en episodios futuros.
+4. **Entradas Sensoriales de Alta Dimensionalidad:** Procesar matrices visuales densas preservando la invariancia traslacional de los objetos.
+### 2.3 Solución DeepMind: Red Convolucional y Aproximación Funcional
+
+En lugar de una tabla estática, se emplea una Red Neuronal Convolucional (CNN) parametrizada por un vector de pesos sinápticos $\theta$:
+
+$$Q(s, a; \theta) \approx Q^*(s, a) \quad[cite: 19]$$
+
+- **Entrada de la Red:** Tensor de estado $s_t$ formado por la secuencia de observaciones sensoriales:
+    $$s_t = (x_1, a_1, x_2, \dots, a_{t-1}, x_t) \quad[cite: 19]$$
+    
+- **Salida de la Red:** Vector de valores $Q(s, a; \theta)$, con una neurona de salida por cada acción admisible $a \in \mathcal{A} = \{1, \dots, K\}$.
+### 2.4 Formulación Matemática de la Función de Pérdida y el Bellman Target
+
+La red neuronal se optimiza iterativamente calculando el error cuadrático entre la predicción actual y el objetivo de Bellman.
+#### Variables Matemáticas:
+
+- $\theta_i$: Vector de parámetros (pesos y sesgos) de la red en la iteración $i$.
+- $\theta_{i-1}$: Vector de parámetros congelados de la **Red Objetivo (_Target Network_)**, utilizado para estabilizar el cálculo del valor futuro.
+- $y_i$: Objetivo escalar de Bellman (_Target_).    
+- $L_i(\theta_i)$: Función de pérdida escalar (Error Cuadrático Medio / MSE).
+
+#### 1. Ecuación del Objetivo de Bellman (_Target_):
+
+$$y_i = \mathbb{E}_{s'} \left[ r + \gamma \max_{a'} Q(s', a'; \theta_{i-1}) \right] \quad[cite: 19]$$
+
+#### 2. Ecuación de Pérdida (_Loss Function_):
+
+$$L_i(\theta_i) = \mathbb{E}_{s, a} \left[ \left( y_i - Q(s, a; \theta_i) \right)^2 \right] \quad[cite: 19]$$
+
+#### 3. Derivación del Gradiente de Pérdida respecto a los Pesos $\theta_i$:
+
+Diferenciando la función de pérdida con respecto al vector de parámetros $\theta_i$:
+
+  
+
+$$\nabla_{\theta_i} L_i(\theta_i) = \mathbb{E}_{s, a, s'} \left[ 2 \cdot \left( Q(s, a; \theta_i) - y_i \right) \cdot \nabla_{\theta_i} Q(s, a; \theta_i) \right]$$
+
+Reemplazando $y_i$:
+
+  
+
+$$\nabla_{\theta_i} L_i(\theta_i) = 2 \, \mathbb{E}_{s, a, s'} \left[ \left( Q(s, a; \theta_i) - \left[ r + \gamma \max_{a'} Q(s', a'; \theta_{i-1}) \right] \right) \nabla_{\theta_i} Q(s, a; \theta_i) \right]$$
+
+#### 4. Ruptura de Correlación: _Experience Replay_
+
+Para evitar que el gradiente diverja por correlación temporal, las transiciones $e_t = (s_t, a_t, r_t, s_{t+1})$ se almacenan en un búfer de memoria $\mathcal{D}$. Durante cada paso de optimización, se extrae un mini-lote (_batch_) aleatorio y uniforme:
+
+  
+
+$$(s, a, r, s') \sim U(\mathcal{D}) \quad[cite: 19]$$
+
+## 3. Implementación en Google Colab: De NumPy a Tensores en PyTorch (20:25 – 20:45)
+
+### 3.1 Fundamentos de PyTorch
+
+PyTorch es un entorno computacional de código abierto desarrollado por Meta AI, diseñado para computación tensorial acelerada por GPU y derivación automática mediante grafos computacionales dinámicos (_Autograd_).
+
+  
+
+### 3.2 Hiperparámetros de la Red Neuronal
+
+Antes de codificar, se deben definir las variables de ajuste estructural:
+
+  
+
+|**Hiperparámetro PDF**|**Descripción Mecatrónica PDF**|**Rango Típico PDF**|
+|---|---|---|
+|**Learning Rate ($\alpha$)**|Magnitud del paso en el espacio de parámetros durante el descenso de gradiente.|$10^{-4}$ a $10^{-1}$|
+|**Epochs**|Número de barridos completos sobre el conjunto de entrenamiento.|$10$ a $1000+$|
+|**Batch Size**|Cantidad de muestras agrupadas por cada actualización de pesos.|$16, 32, 64, 128$|
+|**Layers / Neurons**|Profundidad y ancho de la arquitectura de la red.|$1$ a $5$ capas / $8$ a $256$ nodos|
+|**Activation**|Función de no linealidad para aproximar comportamientos complejos.|ReLU, Tanh, Sigmoid|
+|**Optimizer**|Algoritmo de actualización iterativa de pesos.|Adam, RMSprop, SGD|
+|**Loss Function**|Criterio de error escalar entre predicción y valor objetivo.|MSE ($L_2$), Huber Loss|
+
+### Celda 1: Código Colab — Regresión Lineal y Autograd con PyTorch
+
+Copia y ejecuta esta celda en tu cuaderno de Colab. Modela la estimación de una función continua perturbada con ruido gaussiano:
+
+  
+
+$$y = 2x + 1 + \text{ruido} \quad[cite: 19]$$
+
+```Python
+# ============================================================================
+# CÓDIGO COLAB 1: INTRODUCCIÓN A PYTORCH Y AJUSTE POR GRADIENTE ESTOCÁSTICO
+# ============================================================================
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Fijar semilla para reproducibilidad
+torch.manual_seed(42)
+np.random.seed(42)
+
+# 1. Generación de datos sintéticos (Modelo mecatrónico lineal perturbado)
+# Entrada x en el intervalo [-1, 1]
+x_np = np.linspace(-1, 1, 100).reshape(-1, 1)
+# Ecuación target: y = 2x + 1 + ruido gaussiano
+ruido = np.random.normal(0, 0.15, size=x_np.shape)
+y_np = 2.0 * x_np + 1.0 + ruido
+
+# Conversión de arreglos NumPy a Tensores de PyTorch (float32)
+X_tensor = torch.from_numpy(x_np).float()
+Y_tensor = torch.from_numpy(y_np).float()
+
+# 2. Definición del modelo de red: Capa lineal simple (y = W*x + b)
+modelo_lineal = nn.Linear(in_features=1, out_features=1)
+
+# 3. Configuración de función de pérdida y optimizador
+criterio_loss = nn.MSELoss()
+optimizador = optim.SGD(modelo_lineal.parameters(), lr=0.1)
+
+# 4. Bucle de optimización (Descenso de Gradiente durante 80 épocas)
+historial_loss = []
+for epoca in range(80):
+    # Paso hacia adelante (Forward pass)
+    y_pred = modelo_lineal(X_tensor)
+    loss = criterio_loss(y_pred, Y_tensor)
+    historial_loss.append(loss.item())
+    
+    # Reiniciar gradientes acumulados
+    optimizador.zero_grad()
+    # Retropropagación (Backward pass / Autograd)
+    loss.backward()
+    # Actualización de pesos
+    optimizador.step()
+
+# Extracción de parámetros aprendidos
+peso_W = modelo_lineal.weight.item()
+sesgo_b = modelo_lineal.bias.item()
+
+# 5. Visualización del ajuste
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.5))
+
+ax1.scatter(x_np, y_np, color='#0284c7', alpha=0.7, label='Datos con Ruido')
+ax1.plot(x_np, peso_W * x_np + sesgo_b, color='#dc2626', linewidth=2.5, 
+         label=f'Ajuste PyTorch: y = {peso_W:.2f}x + {sesgo_b:.2f}')
+ax1.set_title('Regresión y Estimación Paramétrica con PyTorch', fontweight='bold')
+ax1.set_xlabel('Entrada Normalizada (x)')
+ax1.set_ylabel('Salida del Sensor (y)')
+ax1.legend()
+
+ax2.plot(historial_loss, color='#16a34a', linewidth=2)
+ax2.set_title('Convergencia de la Función de Pérdida (MSE Loss)', fontweight='bold')
+ax2.set_xlabel('Época de Entrenamiento')
+ax2.set_ylabel('Error Cuadrático Medio')
+ax2.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+print(f"[OK] Parámetros identificados: Pendiente W = {peso_W:.4f} (Real: 2.0) | Sesgo b = {sesgo_b:.4f} (Real: 1.0)")
+```
+
+## 4. Dinámica Mecatrónica Continua: El Péndulo Invertido (20:45 – 21:05)
+
+### 4.1 Formulación Física del Péndulo Invertido
+
+Como contraparte continua al acople del hexápodo y manipulador continuum, analizamos el sistema clásico de equilibrio del **Péndulo Invertido**:
+
+
+![[Pasted image 20260924194404.png]]
+  
+
+#### Variables y Parámetros Físicos:
+
+- $x_1 = \theta$: Posición angular en radianes respecto a la vertical.
+- $x_2 = \omega = \dot{\theta}$: Velocidad angular en radianes por segundo.
+- $m$: Masa puntual concentrada en la punta ($1.0\text{ kg}$).
+- $L$: Longitud del brazo rígido ($1.0\text{ m}$).
+- $g$: Aceleración de la gravedad ($9.81\text{ m/s}^2$).
+- $b$: Coeficiente de fricción viscosa en el eje de rotación ($0.15\text{ N}\cdot\text{s/rad}$).
+- $u[k] = \tau$: Torque de control aplicado por el actuador en el paso discreto $k$.
+- $h$: Periodo de muestreo discreto del controlador ciberfísico ($h = \Delta t = 0.02\text{ s}$).
+### 4.2 Discretización de Ecuaciones de Estado por el Método de Euler
+
+La ecuación diferencial no lineal que gobierna el péndulo con torque aplicado en la base es:
+
+$$\ddot{\theta} = \frac{g}{L} \sin(\theta) - \frac{b}{m L^2}\dot{\theta} + \frac{1}{m L^2}\tau$$
+
+Definiendo el vector de estado continuo $\mathbf{x} = [x_1, x_2]^T = [\theta, \omega]^T$:
+$$\dot{x}_1 = x_2$$
+
+$$\dot{x}_2 = \frac{g}{L} \sin(x_1) - \frac{b}{m L^2} x_2 + \frac{1}{m L^2} u$$
+
+Aplicando la aproximación de diferencias finitas hacia adelante de Euler con paso de integración $h$ ($\dot{x} \approx \frac{x[k+1] - x[k]}{h}$):
+#### 1. Actualización de Posición Angular $x_1$:
+
+$$\frac{x_1[k+1] - x_1[k]}{h} = x_2[k]$$
+
+$$x_1[k+1] = x_1[k] + h \cdot x_2[k] \quad[cite: 19]$$
+
+#### 2. Actualización de Velocidad Angular $x_2$:
+
+$$\frac{x_2[k+1] - x_2[k]}{h} = \frac{g}{L}\sin(x_1[k]) - \frac{b}{m L^2}x_2[k] + \frac{1}{m L^2}u[k]$$
+
+Multiplicando por $h$ y factorizando $\frac{h}{m}$ (asumiendo simplificación dimensional para $L=1\text{ m}$):
+
+$$x_2[k+1] = x_2[k] + \frac{h}{m} \left( m g L \sin(x_1[k]) - b \cdot x_2[k] + u[k] \right) \quad[cite: 19]$$
+
