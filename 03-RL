@@ -1,0 +1,32 @@
+# Sesión 3: Laboratorio Experimental de 10 Prácticas
+
+**Socio Formador:** Chalmers University of Technology (*Department of Electrical Engineering*).  
+**Docentes Responsables:** M. C. I. G. Emir Sánchez-Valdés / Dr. Héctor Cervantes Culebro.  
+
+---
+
+## Configuración Inicial del Entorno en Google Colab
+
+```python
+# ============================================================================
+# INICIALIZACIÓN: GYMNASIUM, NUMPY, MATPLOTLIB Y ANIMACIÓN HTML5
+# ============================================================================
+!pip install gymnasium -q
+
+import gymnasium as gym
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from IPython.display import HTML
+import seaborn as sns
+import random
+
+# Configuración visual de calidad editorial
+plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
+plt.rcParams['font.size'] = 9
+plt.rcParams['figure.dpi'] = 110
+
+random.seed(42)
+np.random.seed(42)
+
+print("[OK] Entorno de laboratorio inicializado con éxito.")
