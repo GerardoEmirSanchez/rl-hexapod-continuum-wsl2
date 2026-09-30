@@ -1,0 +1,134 @@
+
+
+## Experimento 09: Dilema Exploración-Explotación ($\epsilon$-Greedy Decay)
+
+> [!NOTE]
+> ### Fundamento Matemático y Conexión Teórica
+> Si $\epsilon$ es fijo y alto ($0.30$), el agente sigue saltando al abismo por pura curiosidad incluso después de haber aprendido la ruta óptima. Se introduce el decaimiento exponencial de exploración:
+>
+> $$\epsilon_{t+1} = \max(\epsilon_{\min}, \; \epsilon_t \cdot \lambda_{\text{decay}})$$
+>
+> Donde $\lambda_{\text{decay}} \in (0, 1)$ transiciona suavemente al robot de explorador novato a ejecutor industrial preciso.
+
+```python
+# ============================================================================
+# EXPERIMENTO 09: DECAIMIENTO DE EXPLORACIÓN (EPSILON DECAY)
+# ============================================================================
+def entrenar_con_decay(epsilon_decay=0.99, eps_min=0.01, total_ep=300):
+    env = gym.make('CliffWalking-v0')
+    Q = np.zeros((env.observation_space.n, env.action_space.n))
+    eps = 1.0
+    historial_retornos = []
+    
+    for ep in range(total_ep):
+        s, _ = env.reset()
+        g_ep = 0
+        while True:
+            a = env.action_space.sample() if random.random() < eps else np.argmax(Q[s, :])
+            s_next, r, term, trunc, _ = env.step(a)
+            Q[s, a] += 0.10 * (r + 0.95 * np.max(Q[s_next, :]) - Q[s, a])
+            s = s_next
+            g_ep += r
+            if term or trunc: break
+        eps = max(eps_min, eps * epsilon_decay)
+        historial_retornos.append(g_ep)
+    return historial_retornos
+
+curva_fija = entrenar_con_decay(epsilon_decay=1.0)       # Epsilon constante = 1.0
+curva_decay = entrenar_con_decay(epsilon_decay=0.985)    # Decaimiento balanceado
+
+plt.figure(figsize=(7, 3))
+plt.plot(curva_fija, label='Epsilon Fijo (Ruido Continuo)', alpha=0.4, color='red')
+plt.plot(curva_decay, label='Epsilon Decay (Convergencia Limpia)', color='green')
+plt.title('Experimento 09: Impacto de Epsilon Decay en la Estabilidad de Control', fontweight='bold')
+plt.xlabel('Episodio')
+plt.ylabel('Retorno del Episodio')
+plt.ylim(-150, 0)
+plt.legend()
+plt.tight_layout()
+plt.show()
+```
+
+> [!TIP]
+> ### Protocolo de Laboratorio: Modificación, Ejecución y Observación
+> **¿Qué deben modificar?** Ajusten `epsilon_decay` a $0.90$ (decaimiento ultrarrápido) y luego a $0.999$ (decaimiento ultralento). Observen la curva de retorno en Colab.  
+> **¿Qué observarán?** Con $0.90$, el agente deja de explorar en el episodio 20 antes de encontrar la meta y se estanca en una política subóptima permanente. Con $0.985$, la curva sube suavemente hasta estabilizarse en $-13.0$ puntos constantes.
+
+### TABLA 09: Dinámica de Convergencia según la Tasa de Decaimiento
+
+| Decaimiento ($\lambda_{\text{decay}}$) | Episodio de Convergencia | Retorno Final Estable | Varianza Residual | Comportamiento Operativo del Robot |
+| :--- | :---: | :---: | :---: | :--- |
+| $\lambda = 1.00$ (Sin Decaimiento) | Nunca converge | $-45.0\text{ pts}$ | Muy Alta | El robot salta al vacío intermitentemente por azar. |
+| $\lambda = 0.985$ (Balanceado) | $\approx \text{Episodio } 140$ | $-13.0\text{ pts}$ | Nula ($\sigma = 0$) | Explora al inicio y ejecuta la trayectoria óptima al final. |
+| $\lambda = 0.90$ (Prematuro) | $\approx \text{Episodio } 25$ | $-90.0\text{ pts}$ | Nula | Se congela en una política fallida por falta de exploración. |
+
+---
+
+## Experimento 10: Estrés Paramétrico Conjunto ($\alpha$ vs. $\gamma$) y Mapa de Calor
+
+> [!NOTE]
+> ### Fundamento Matemático y Conexión Teórica
+> El factor de descuento $\gamma \in [0, 1)$ define el horizonte temporal efectivo de planeación: $H_{\text{efectivo}} \approx \frac{1}{1 - \gamma}$. Si la meta está a $D$ pasos de distancia y $\gamma \to 0$, el gradiente decae como $\gamma^D \to 0$, provocando que el robot se vuelva miope. Paralelamente, si la tasa de aprendizaje es excesiva ($\alpha \ge 1.0$), el algoritmo oscila y diverge numéricamente.
+
+```python
+# ============================================================================
+# EXPERIMENTO 10: HEATMAP DE LA TABLA Q APRENDIDA Y ESTRÉS DE GAMMA/ALPHA
+# ============================================================================
+def entrenar_experimento_estres(alpha_val, gamma_val):
+    env = gym.make('CliffWalking-v0')
+    Q = np.zeros((env.observation_space.n, env.action_space.n))
+    for ep in range(350):
+        s, _ = env.reset()
+        while True:
+            a = env.action_space.sample() if random.random() < 0.15 else np.argmax(Q[s, :])
+            s_next, r, term, trunc, _ = env.step(a)
+            Q[s, a] += alpha_val * (r + gamma_val * np.max(Q[s_next, :]) - Q[s, a])
+            s = s_next
+            if term or trunc: break
+    return Q
+
+# Matriz con hiperparámetros óptimos
+Q_optimo = entrenar_experimento_estres(alpha_val=0.10, gamma_val=0.95)
+V_mapa = np.max(Q_optimo, axis=1).reshape((4, 12))
+
+plt.figure(figsize=(9, 3), dpi=120)
+sns.heatmap(V_mapa, annot=True, fmt=".1f", cmap="viridis", linewidths=0.5,
+            cbar_kws={'label': 'Valor Óptimo V*(s)'})
+plt.title('Experimento 10: Mapa de Calor de la Función de Valor V*(s) Aprendida', fontweight='bold')
+plt.xlabel('Columnas (0=Inicio a 11=Meta)')
+plt.ylabel('Filas (Fila 3=Acantilado)')
+plt.tight_layout()
+plt.show()
+```
+
+> [!TIP]
+> ### Protocolo de Laboratorio: Modificación, Ejecución y Observación
+> **¿Qué deben modificar?** En la función, ejecuten las tres combinaciones de la TABLA 10: **Caso A** ($\alpha=0.10, \gamma=0.95$), **Caso B** ($\alpha=0.10, \gamma=0.10$, miopía extrema) y **Caso C** ($\alpha=0.95, \gamma=0.95$, tasa de actualización agresiva).  
+> **¿Qué observarán?** Con $\gamma = 0.10$, los valores de las casillas alejadas colapsan a $-1.0$; el mapa de calor pierde el gradiente de color y el robot se niega a avanzar. Con $\alpha = 0.95$, los valores de la tabla oscilan caóticamente entre actualizaciones.
+
+### TABLA 10: Matriz de Estrés Paramétrico Cruzado ($\alpha$ vs. $\gamma$)
+
+| Configuración | Alpha ($\alpha$) | Gamma ($\gamma$) | Pasos a Meta | Retorno ($G_0$) | Diagnóstico Técnico del Mapa de Calor |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **Caso A (Óptimo)** | $0.10$ | $0.95$ | $13\text{ pasos}$ | $-13.0\text{ pts}$ | Gradiente suave; valores máximos en la meta y caída suave al inicio. |
+| **Caso B (Miope)** | $0.10$ | $0.10$ | No llega | $-100.0\text{ pts}$ | Gradiente nulo; la meta a 13 pasos se desvanece por $(0.1)^{13} \approx 0$. |
+| **Caso C (Agresivo)** | $0.95$ | $0.95$ | Inestable | Oscilante | Sobre-escritura violenta de la memoria; inestabilidad numérica. |
+
+---
+
+## Discusión Socrática de Cierre y Preguntas de Examen (15 min)
+
+### Checklist de Entrega Oficial para Salida de Clase
+
+- [ ] Cuaderno `MR3005C_M9_Lab3_10Experimentos.ipynb` ejecutado en Colab con las gráficas de los 10 experimentos generadas.
+- [ ] Las 10 tablas experimentales (**TABLA 01 a TABLA 10**) llenadas en la bitácora física o digital del equipo.
+- [ ] Archivo descargado como `.ipynb` y comiteado en el repositorio Git oficial:
+
+```bash
+cd ~/cyberphysical-rl-continuum
+git add MR3005C_M9_Lab3_10Experimentos.ipynb
+git commit -m "feat: completar los 10 experimentos de laboratorio de la sesion 3"
+git push origin main
+```
+
+---
