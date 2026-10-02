@@ -117,3 +117,109 @@ print(f"Resultados para p_deriva = {p_evaluada:.2f}:")
 print(f" -> Tasa de Colisión Lateral: {t_colision:.1f}%")
 print(f" -> Tasa de Éxitos a Meta:    {t_exito:.1f}%")
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# CODIGO RESUELTO
+
+
+
+```
+# ============================================================================
+# CÓDIGO 1 — FÍSICA ESTOCÁSTICA DEL HEXÁPODO 
+# ============================================================================
+import numpy as np
+import random
+
+# ----------------------------------------------------------------------------
+# 1. PARÁMETRO EXPERIMENTAL (MODIFICAR AQUÍ EN CADA CORRIDA)
+# ----------------------------------------------------------------------------
+# Cambia esta variable manualmente para registrar cada fila de la TABLA 01:
+#   Corrida 1 (Piso Seco):     p_evaluada = 0.05
+#   Corrida 2 (Piso Húmedo):   p_evaluada = 0.35
+#   Corrida 3 (Piso Aceitado): p_evaluada = 0.70
+
+
+# ----------------------------------------------------------------------------
+# 2. MOTOR DE FÍSICA Y TRANSICIÓN
+# ----------------------------------------------------------------------------
+def transicion_hexapodo(pos, accion_nominal, p_deriva):
+    """
+    pos: tupla (fila, columna) [0 a 4]
+    accion_nominal: 3 (Avanzar al Este)
+    p_deriva: Probabilidad de resbalón ortogonal
+    """
+    movimientos = [(-1, 0), (1, 0), (0, -1), (0, 1)] # 0:Up, 1:Down, 2:Left, 3:Right
+    
+    # Bifurcación estocástica de tracción
+    if random.random() < (1.0 - p_deriva):
+        dr, dc = movimientos[accion_nominal]
+    else:
+        # Resbalón transversal: Norte (-1, 0) o Sur (1, 0) con 50% c/u
+        dr, dc = random.choice([(-1, 0), (1, 0)])
+
+    # Confinamiento físico en la cuadrícula [0, 4]
+    r_nuevo = max(0, min(4, pos[0] + dr))
+    c_nuevo = max(0, min(4, pos[1] + dc))
+
+    return (r_nuevo, c_nuevo)
+
+
+# ----------------------------------------------------------------------------
+# 3. EVALUADOR EXPERIMENTAL (100 EPISODIOS EN LAZO ABIERTO)
+# ----------------------------------------------------------------------------
+def evaluar_desempeno_lazo_abierto(p_deriva, n_episodios=100, max_pasos=10, semilla=42):
+    # La semilla se reinicia en cada llamada para garantizar resultados idénticos
+    random.seed(semilla)
+    
+    colisiones = 0
+    exitos = 0
+    
+    for ep in range(n_episodios):
+        pos_actual = (2, 0)  # Inicia en el centro-oeste
+        
+        for paso in range(max_pasos):
+            pos_actual = transicion_hexapodo(pos_actual, accion_nominal=3, p_deriva=p_deriva)
+            
+            # A) Acople exitoso en la gaveta
+            if pos_actual == (2, 4):
+                exitos += 1
+                break
+                
+            # B) Colisión lateral destructiva antes de llegar a la columna 4
+            elif (pos_actual[0] == 0 or pos_actual[0] == 4) and pos_actual[1] < 4:
+                colisiones += 1
+                break
+
+    tasa_colision = (colisiones / n_episodios) * 100.0
+    tasa_exito = (exitos / n_episodios) * 100.0
+    return tasa_colision, tasa_exito
+
+
+# ----------------------------------------------------------------------------
+# TODO 4: EVALUACIÓN EXPERIMENTAL Y BARRIDO DE FRICCIÓN
+# ----------------------------------------------------------------------------
+# Modifica la variable p_evaluada para responder la tabla de entrega:
+p_evaluada = 0.0
+
+t_colision, t_exito = evaluar_desempeno_lazo_abierto(p_deriva=p_evaluada, n_episodios=100)
+print(f"Resultados para p_deriva = {p_evaluada:.2f}:")
+print(f" -> Tasa de Colisión Lateral: {t_colision:.1f}%")
+print(f" -> Tasa de Éxitos a Meta:    {t_exito:.1f}%")
+
+```
+
+
+
+
