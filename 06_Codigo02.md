@@ -202,49 +202,137 @@ print("=" * 80)
 
 ---
 
-### 5. Guía de Solución y Criterios Docentes (Para el Profesor)
+### CODIGO RESUELTO
 
-#### Resolución de los Bloques de Código
+```python
+# ============================================================================
+# CÓDIGO 2 — MOTOR DE APRENDIZAJE Q-LEARNING TABULAR (SOLUCIÓN COMPLETA)
+# ============================================================================
+import gymnasium as gym
+import numpy as np
+import random
 
-* **Resolución Ejercicio 1 (Selección $\epsilon$-Greedy):**
-  ```python
-  if random.random() < epsilon:
-      a = env.action_space.sample()
-  else:
-      a = np.argmax(Q[s, :])
-  ```
-* **Resolución Ejercicio 2 (Actualización Bellman TD):**
-  ```python
-  td_target = r + gamma * np.max(Q[s_sig, :])
-  td_error = td_target - Q[s, a]
-  Q[s, a] += alpha * td_error
-  ```
-* **Resolución Ejercicio 3 (Inferencia Determinista Voraz):**
-  ```python
-  a = np.argmax(Q[s, :])
-  ```
+# ----------------------------------------------------------------------------
+# SECCIÓN 1: HIPERPARÁMETROS EXPERIMENTALES (MODIFICAR AQUÍ MANUALMENTE)
+# ----------------------------------------------------------------------------
+# Cambia estas 4 variables una a una para registrar cada corrida en la tabla:
+#   Corrida 1 (Base Nominal):   alpha = 0.10, gamma = 0.95, epsilon = 0.20, episodios = 400
+#   Corrida 2 (Agente Miope):   alpha = 0.10, gamma = 0.15, epsilon = 0.20, episodios = 400
+#   Corrida 3 (Cero Azar):      alpha = 0.10, gamma = 0.95, epsilon = 0.00, episodios = 400
+#   Corrida 4 (Infraentrenado): alpha = 0.10, gamma = 0.95, epsilon = 0.20, episodios = 30
 
-#### Clave de Validación Docente (Valores Exactos con Semillas Fijadas)
+alpha_exp = 0.10
+gamma_exp = 0.95
+epsilon_exp = 0.20
+episodios_exp = 400
 
-Al sustituir uno a uno los parámetros de la Sección 1, los estudiantes deben reportar exactamente estos valores:
 
-1. **Corrida 1 (Base Nominal):**
-   * Retorno $G_0$: **`-13.0 pts`**
-   * ¿Llega a Meta?: **`SÍ`**
-   * Pasos Usados: **`13`**
-   * Error TD Final: $\approx \mathbf{0.0000\text{ a } 0.0500}$
-   * Trayectoria: Bordea la cornisa por la fila 2 ($36 \to 24 \to 25 \dots \to 35 \to 47$).
-2. **Corrida 2 (Agente Miope, $\gamma = 0.15$):**
-   * Retorno $G_0$: **`-40.0 pts`** (Agotamiento de pasos / Timeout).
-   * ¿Llega a Meta?: **`NO`**
-   * Pasos Usados: **`40`**
-   * Diagnóstico: Con $(0.15)^{13} \approx 10^{-11}$, la señal de la meta no se propaga hasta el origen; el robot deambula en bucle cerrado.
-3. **Corrida 3 (Cero Azar, $\epsilon = 0.00$):**
-   * Retorno $G_0$: **`-40.0 pts`**
-   * ¿Llega a Meta?: **`NO`**
-   * Pasos Usados: **`40`**
-   * Diagnóstico: Al no explorar, la tabla queda en ceros; el robot siempre escoge la primera acción con empate ($a=0$: subir contra la pared) y jamás descubre la ruta.
-4. **Corrida 4 (Infraentrenado, $N = 30$):**
-   * Retorno $G_0$: **`≤ -100.0 pts`** o **`-40.0 pts`** (Caída inmediata al abismo o extravío).
-   * ¿Llega a Meta?: **`NO`**
-   * Diagnóstico: 30 episodios no son suficientes para que la información de Bellman retropropague 13 pasos en el espacio discreto.
+# ----------------------------------------------------------------------------
+# SECCIÓN 2: ALGORITMO DE ENTRENAMIENTO TEMPORAL DIFFERENCE (Q-LEARNING)
+# ----------------------------------------------------------------------------
+def entrenar_q_learning(env, alpha, gamma, epsilon, episodios, semilla=42):
+    random.seed(semilla)
+    np.random.seed(semilla)
+
+    n_S = env.observation_space.n
+    n_A = env.action_space.n
+    Q = np.zeros((n_S, n_A))
+    historial_td = []
+
+    for ep in range(episodios):
+        s, _ = env.reset(seed=semilla + ep)
+        errores_ep = []
+
+        while True:
+            # ----------------------------------------------------------------
+            # RESOLUCIÓN EJERCICIO 1: SELECCIÓN DE ACCIÓN EPSILON-GREEDY
+            # ----------------------------------------------------------------
+            if random.random() < epsilon:
+                a = env.action_space.sample()  # Exploración uniforme
+            else:
+                a = np.argmax(Q[s, :])         # Explotación de la tabla Q
+
+            # Interacción física con la API Gymnasium
+            s_sig, r, term, trunc, _ = env.step(a)
+
+            # ----------------------------------------------------------------
+            # RESOLUCIÓN EJERCICIO 2: ERROR TD Y ACTUALIZACIÓN BELLMAN
+            # ----------------------------------------------------------------
+            td_target = r + gamma * np.max(Q[s_sig, :])
+            td_error = td_target - Q[s, a]
+            Q[s, a] += alpha * td_error
+
+            errores_ep.append(abs(td_error))
+            s = s_sig
+
+            if term or trunc:
+                break
+
+        historial_td.append(np.mean(errores_ep))
+
+    return Q, historial_td
+
+
+# ----------------------------------------------------------------------------
+# SECCIÓN 3: EXTRACTOR Y EVALUADOR DE POLÍTICA DETERMINISTA (INFERENCIA)
+# ----------------------------------------------------------------------------
+def evaluar_politica(env, Q, max_pasos=40, semilla=42):
+    s, _ = env.reset(seed=semilla)
+    ruta = [s]
+    g0 = 0.0
+
+    for _ in range(max_pasos):
+        # --------------------------------------------------------------------
+        # RESOLUCIÓN EJERCICIO 3: ACCIÓN DETERMINISTA VORAZ PURA (EPSILON = 0)
+        # --------------------------------------------------------------------
+        a = np.argmax(Q[s, :])
+
+        s, r, term, trunc, _ = env.step(a)
+        ruta.append(s)
+        g0 += r
+
+        if term or trunc:
+            break
+
+    return ruta, g0
+
+
+# ----------------------------------------------------------------------------
+# SECCIÓN 4: EJECUCIÓN EXPERIMENTAL Y TELEMETRÍA (TODO 4)
+# ----------------------------------------------------------------------------
+env_cliff = gym.make('CliffWalking-v1')
+
+# Entrenamiento con los parámetros fijados en la Sección 1
+Q_opt, logs_td = entrenar_q_learning(
+    env=env_cliff,
+    alpha=alpha_exp,
+    gamma=gamma_exp,
+    epsilon=epsilon_exp,
+    episodios=episodios_exp,
+    semilla=42
+)
+
+# Evaluación determinista
+ruta_eval, retorno_eval = evaluar_politica(env_cliff, Q_opt, semilla=42)
+
+pasos_usados = len(ruta_eval) - 1
+alcanzo_meta = (ruta_eval[-1] == 47)
+error_td_final = np.mean(logs_td[-10:]) if len(logs_td) >= 10 else np.mean(logs_td)
+
+print("=" * 80)
+print(f"{'TELEMETRÍA PARA COMPLETAR LA TABLA (CÓDIGO 2)':^80}")
+print("=" * 80)
+print(f" -> Tasa de Aprendizaje (alpha):       {alpha_exp:.2f}")
+print(f" -> Factor de Descuento (gamma):        {gamma_exp:.2f}")
+print(f" -> Tasa de Exploración (epsilon):     {epsilon_exp:.2f}")
+print(f" -> Volumen de Episodios (N):          {episodios_exp}")
+print(f" -> Retorno Final Acumulado (G0):      {retorno_eval:+06.1f} pts")
+print(f" -> ¿Alcanzó la Meta Física (s=47)?:   {'SÍ' if alcanzo_meta else 'NO'}")
+print(f" -> Pasos Empleados por el Robot:      {pasos_usados} pasos")
+print(f" -> Error TD Final Promedio (|delta|): {error_td_final:.4f}")
+print(f" -> Secuencia de Estados Visitados:    {ruta_eval}")
+print("=" * 80)
+
+```
+
+
