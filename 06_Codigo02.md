@@ -25,7 +25,9 @@ R3: [ IN ][  X    X    X    X    X    X    X    X    X    X  ][META]
 ---
 
 #### 2. La Formulación Matemática de Diferencia Temporal (Q-Learning)
-A diferencia de los métodos analíticos basados en modelo (*Model-Based*), el robot desconoce la función de transición física del entorno. Aprende directamente de las muestras de interacción sensorial $(\mathbf{s}_t, \mathbf{a}_t, \mathbf{r}_{t+1}, \mathbf{s}_{t+1})$ mediante la regla de **Diferencia Temporal (TD)**:
+A diferencia de los métodos analíticos basados en modelo (*Model-Based*), el robot desconoce la función de transición física del entorno. Aprende directamente de las muestras de interacción sensorial 
+$$(\mathbf{s}_t, \mathbf{a}_t, \mathbf{r}_{t+1}, \mathbf{s}_{t+1})$$ 
+mediante la regla de **Diferencia Temporal (TD)**:
 
 $$Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha \cdot \delta_t$$
 
