@@ -19,7 +19,7 @@ Fila 4 [ PARED ]  [      ]   [      ]   [      ]  [  PELIGRO  ]
 #### 2. La Perturbación Física (Deriva por Pérdida de Tracción)
 En la realidad física, los elastómeros de las patas sufren deslizamiento sobre la mesa:
 1. Con probabilidad $1 - p_{\text{deriva}}$, el robot tracciona bien y avanza en la dirección deseada (hacia el Este).
-2. Con probabilidad $p_{\text{deriva}}$, el robot derrapa lateralmente y **no avanza al frente**: se desvía perpendicularmente con un $50\%$ de probabilidad hacia el Norte ($(-1, 0)$) o un $50\%$ hacia el Sur ($(1, 0)$).
+2. Con probabilidad $p_{\text{deriva}}$, el robot derrapa lateralmente y **no avanza al frente**: se desvía perpendicularmente con un $50\%$ de probabilidad hacia el Norte ((-1, 0) o un $50\%$ hacia el Sur ((1, 0)).
 3. **Condición de Colisión:** Los rieles de la mesa están en la Fila 0 y Fila 4. Si la acumulación de resbalones desvía al robot a cualquiera de esas dos filas **antes de que cruce la Columna 4**, el chasis colisiona y el episodio se da por perdido.
 
 ---
