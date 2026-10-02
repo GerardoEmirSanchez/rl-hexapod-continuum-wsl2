@@ -2,10 +2,10 @@
 
 #### 1. Contexto Físico y Mecatrónico del Problema
 En este experimento modelaremos el comportamiento físico real de un robot caminante (hexápodo) operando sobre una mesa de trabajo plana discretizada como una cuadrícula de $5 \times 5$:
-* **Coordenadas:** Las filas $r$ van de $0$ (Norte/arriba) a $4$ (Sur/abajo); las columnas $c$ van de $0$ (Oeste/izquierda) a $4$ (Este/derecha).
-* **Posición Inicial:** El robot parte centrado en la posición $(2, 0)$ (fila 2, columna 0).
-* **Objetivo Mecánico (Gaveta):** El acople de herramientas se ubica en $(2, 4)$ (fila 2, columna 4).
-* **Controlador en Lazo Abierto (*Open-Loop*):** El controlador emite de forma ciega y repetitiva el comando nominal de avanzar siempre hacia la derecha (**Acción $a = 3$, desplazamiento $(0, 1)$**).
+* **Coordenadas:** Las filas r van de 0 (Norte/arriba) a 4 (Sur/abajo); las columnas c van de 0 (Oeste/izquierda) a 4 (Este/derecha).
+* **Posición Inicial:** El robot parte centrado en la posición (2, 0) (fila 2, columna 0).
+* **Objetivo Mecánico (Gaveta):** El acople de herramientas se ubica en (2, 4) (fila 2, columna 4).
+* **Controlador en Lazo Abierto (*Open-Loop*):** El controlador emite de forma ciega y repetitiva el comando nominal de avanzar siempre hacia la derecha (**Acción a = 3, desplazamiento (0, 1)**).
 
 ```text
        Col 0      Col 1      Col 2      Col 3      Col 4
