@@ -5,33 +5,67 @@
 # ============================================================================
 # CELDA 1: FUNDAMENTOS OPERATIVOS DE PYTORCH PARA RL (TENSORES Y AUTOGRAD)
 # ============================================================================
+# Importamos PyTorch base para la creación y manipulación de tensores multidimensionales
 import torch
+
+# Módulo de redes neuronales (aquí están capas como nn.Linear, funciones de activación y pérdidas)
 import torch.nn as nn
+
+# Módulo de optimizadores (aquí residen algoritmos como Adam, SGD, RMSprop)
 import torch.optim as optim
+
+# Librería de cómputo numérico estándar para comparar y manejar arreglos en CPU
 import numpy as np
 
-# Verificación de hardware
+# Verificación de hardware: detecta si Colab/WSL tiene tarjeta gráfica NVIDIA activa
+# Si hay GPU disponible selecciona 'cuda'; si no, se queda en el procesador 'cpu'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Imprime en consola el dispositivo sobre el que correrán las operaciones
 print(f"[HARDWARE] Entorno configurado en: {device}")
 
 # 1. Tensores y Autograd: El mecanismo de propagación hacia atrás
+
+# 'w' es el peso (pendiente). 'requires_grad=True' le indica a PyTorch que debe
+# rastrear todas las operaciones matemáticas sobre él para calcular su derivada luego.
 w = torch.tensor([2.0], requires_grad=True)
+
+# 'b' es el sesgo (intercepto). También se marca para rastrear su gradiente.
 b = torch.tensor([1.0], requires_grad=True)
+
+# 'x' es la entrada (el estado del entorno). No requiere gradiente porque es un dato fijo.
 x = torch.tensor([1.5])
+
+# 'y_target' es el valor objetivo real (la meta deseada). Tampoco requiere gradiente.
 y_target = torch.tensor([5.0])
 
-# Pase hacia adelante (Forward)
+# Pase hacia adelante (Forward): calcula la predicción del modelo lineal
+# y_pred = (2.0 * 1.5) + 1.0 = 4.0
 y_pred = w * x + b
+
+# Función de costo / pérdida: Error Cuadrático Medio (MSE) puntual
+# loss = (4.0 - 5.0)^2 = (-1.0)^2 = 1.0
 loss = (y_pred - y_target) ** 2  # Error cuadrático puntual
 
-# Pase hacia atrás (Backward)
+# Pase hacia atrás (Backward): PyTorch recorre el grafo computacional en reversa
+# aplicando la regla de la cadena para calcular d(Loss)/dw y d(Loss)/db
 loss.backward()
-print(f"[AUTOGRAD] Gradiente d(Loss)/dw: {w.grad.item():.4f} | d(Loss)/db: {b.grad.item():.4f}")
+
+# Imprime los gradientes resultantes guardados en el atributo .grad de cada tensor
+# d(Loss)/dw = -3.0000 | d(Loss)/db = -2.0000
+print(
+    f"[AUTOGRAD] Gradiente d(Loss)/dw: {w.grad.item():.4f} | d(Loss)/db:"
+    f" {b.grad.item():.4f}"
+)
 
 # 2. Demostración del vaciado obligatorio de gradientes
 # En PyTorch, los gradientes se ACUMULAN por defecto. En RL esto corrompería el lote.
+
+# '.zero_()' es una operación in-place (el guión bajo '_' indica modificación directa en memoria)
+# que pone el acumulador de gradiente en 0.0
 w.grad.zero_()
 b.grad.zero_()
+
+# Verificamos que el gradiente ahora vale 0.0 y no quedó basura de la iteración anterior
 print(f"[AUTOGRAD] Gradientes tras zero_grad(): w.grad = {w.grad.item()}")
 ```
 
