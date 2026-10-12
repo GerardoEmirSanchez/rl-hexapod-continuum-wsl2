@@ -355,7 +355,7 @@ t_4_gpu, ep_4_gpu = ejecutar_experimento_dqn(map_name="4x4", episodios=800, usar
 
 ### 1.2 Dinámica Hands-On y Llenado de Tablas de Laboratorio
 
-#### TABLA 1: Rendimiento Comparativo Hardware en FrozenLake-v1 (Evidencia Día 3)
+#### TABLA 1: Rendimiento Comparativo Hardware en FrozenLake-v1
 *Instrucción:* Los estudiantes deben correr el código en sus instancias de Colab alternando entre entorno de ejecución CPU y GPU (T4/A100) para registrar la latencia y la eficiencia de muestra.
 
 | Entorno / Mapa | Procesador | Tiempo de Ejecución (s) | Episodios para Resolver (K) | Diagnóstico de Rendimiento / Overhead |
