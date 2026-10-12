@@ -74,36 +74,69 @@ print(f"[AUTOGRAD] Gradientes tras zero_grad(): w.grad = {w.grad.item()}")
 # ============================================================================
 # CELDA 2: ARQUITECTURA DE LA RED DQN CON INICIALIZACIÓN HE (KAIMING UNIFORM)
 # ============================================================================
+
+# Definición de la clase DQN_Network que hereda de nn.Module (la clase base de PyTorch para todas las redes neuronales)
 class DQN_Network(nn.Module):
     """
     Aproximador funcional feedforward con 2 capas ocultas.
     Arquitectura: Input(N) -> FC(12) -> ReLU -> FC(8) -> ReLU -> FC(Num_Acciones)
     """
+
+    # Constructor: recibe el número de acciones discretas del entorno y la dimensión del estado de entrada
     def __init__(self, num_actions: int, input_dim: int):
+        # Llama obligatoriamente al constructor de la clase padre nn.Module para registrar parámetros y módulos
         super().__init__()
+
+        # Define el flujo secuencial de capas completamente conectadas (FC) y activaciones no lineales
         self.FC = nn.Sequential(
+            # Capa 1: Entrada de dimensión N (ej. 64) conectada a 12 neuronas ocultas
             nn.Linear(input_dim, 12),
+            # Activación ReLU: f(x) = max(0, x). inplace=True ahorra memoria modificando el tensor directamente
             nn.ReLU(inplace=True),
+            # Capa 2: Conecta las 12 neuronas previas con 8 neuronas ocultas
             nn.Linear(12, 8),
+            # Segunda activación no lineal ReLU
             nn.ReLU(inplace=True),
-            nn.Linear(8, num_actions)
+            # Capa de salida: Conecta las 8 neuronas con el número de acciones discretas posibles (ej. 4)
+            # NOTA: No lleva Softmax al final porque predice valores Q arbitrarios en R, no probabilidades
+            nn.Linear(8, num_actions),
         )
-        
-        # Inicialización He (Kaiming Uniform) adaptada a activaciones ReLU
+
+        # Inicialización de pesos: recorre cada bloque dentro de self.FC
         for module in self.FC:
+            # Verifica si el bloque actual es una capa de transformación lineal (nn.Linear)
             if isinstance(module, nn.Linear):
+                # Aplica la inicialización He (Kaiming Uniform) ajustada a la no linealidad ReLU
+                # Escala los pesos según fan_in para evitar gradientes desvanecidos o explosivos
                 nn.init.kaiming_uniform_(module.weight, nonlinearity='relu')
+                # Inicializa todos los sesgos (biases) en cero de forma determinista
                 nn.init.zeros_(module.bias)
 
+    # Método obligatorio que describe cómo viajan los datos hacia adelante en la red
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Pasa el tensor de entrada 'x' por la secuencia de capas y retorna los valores Q crudos
         return self.FC(x)
 
-# Prueba unitaria de dimensiones: FrozenLake 8x8 -> 64 estados discretos, 4 acciones
+
+# PRUEBA UNITARIA DE DIMENSIONES:
+# Instanciamos la red para FrozenLake 8x8 (64 estados posibles, 4 acciones: Izq, Abajo, Der, Arriba)
+# .to(device) traslada los pesos de la red a la GPU (CUDA) o la mantiene en CPU
 test_net = DQN_Network(num_actions=4, input_dim=64).to(device)
+
+# Crea un lote simulado (batch_size=1, estado=64) lleno de ceros en el dispositivo asignado
 dummy_state = torch.zeros((1, 64), dtype=torch.float32, device=device)
+
+# Codificación One-Hot: asignamos 1.0 únicamente en la posición 15 para simular que el robot está en la casilla 15
 dummy_state[0, 15] = 1.0  # Estado 15 activo (One-Hot)
+
+# Inferencia: pasamos el estado dummy por la red para obtener los 4 valores Q estimados
 q_values_test = test_net(dummy_state)
-print(f"[TEST RED] Salida de Q(s, a): {q_values_test.shape} -> Valores: {q_values_test.detach().cpu().numpy()}")
+
+# Imprime las dimensiones resultantes ([1, 4]) y los valores numéricos calculados para cada acción
+print(
+    f"[TEST RED] Salida de Q(s, a): {q_values_test.shape} -> Valores:"
+    f" {q_values_test.detach().cpu().numpy()}"
+)
 ```
 
 #### Celda 3: Código — Búfer de Repetición Circular con collections.deque
