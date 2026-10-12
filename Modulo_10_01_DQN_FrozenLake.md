@@ -39,7 +39,6 @@ print(f"[AUTOGRAD] Gradientes tras zero_grad(): w.grad = {w.grad.item()}")
 ```python
 # ============================================================================
 # CELDA 2: ARQUITECTURA DE LA RED DQN CON INICIALIZACIÓN HE (KAIMING UNIFORM)
-# Referencia: DQN_Agent.pdf (Pág 3, Sección 3.2 y 3.3)
 # ============================================================================
 class DQN_Network(nn.Module):
     """
@@ -77,7 +76,6 @@ print(f"[TEST RED] Salida de Q(s, a): {q_values_test.shape} -> Valores: {q_value
 ```python
 # ============================================================================
 # CELDA 3: REPLAY MEMORY CIRCULAR EFICIENTE (O(1) APPEND)
-# Referencia: DQN_Agent.pdf (Pág 4, Sección 4.1)
 # ============================================================================
 from collections import deque
 import random
@@ -119,7 +117,6 @@ class ReplayMemory:
 ```python
 # ============================================================================
 # CELDA 4: AGENTE DQN INTEGRAL (BELLMAN TARGET, CLIPPING Y HARD UPDATE)
-# Referencia: DQN_Agent.pdf (Pág 5-8, Secciones 4.2 - 4.8)
 # ============================================================================
 class DQNAgent:
     def __init__(self, env, lr=6e-4, gamma=0.93, batch_size=32, mem_capacity=4000,
@@ -207,7 +204,6 @@ class DQNAgent:
 ```python
 # ============================================================================
 # CELDA 5: EXPERIMENTO COMPLETO FROZENLAKE CON TELEMETRÍA DE TIEMPO
-# Referencia: Day 3 DQN agent.txt
 # ============================================================================
 import gymnasium as gym
 import time
