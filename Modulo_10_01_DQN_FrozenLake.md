@@ -144,40 +144,61 @@ print(
 # ============================================================================
 # CELDA 3: REPLAY MEMORY CIRCULAR EFICIENTE (O(1) APPEND)
 # ============================================================================
+
+# Importamos deque (cola de doble extremo) de la librería estándar de Python
+# Es una estructura circular en C optimizada para agregar y eliminar elementos en tiempo constante O(1)
 from collections import deque
+
+# Importamos random (aunque el muestreo numérico vectorial se realiza abajo con numpy)
 import random
 
+
+# Definición de la clase que gestiona el Búfer de Repetición de Experiencias (Experience Replay)
 class ReplayMemory:
+
+    # Constructor: recibe 'capacity', el número máximo de transiciones que se retendrán en memoria RAM
     def __init__(self, capacity: int):
+        # Guardamos la capacidad máxima asignada al búfer
         self.capacity = capacity
+
+        # Deque circular para los estados observados s_t. Al llegar a 'capacity',
+        # cualquier elemento nuevo descarta automáticamente el más antiguo en O(1) sin reubicar memoria
         self.states = deque(maxlen=capacity)
+
+        # Deque circular para las acciones ejecutadas a_t
         self.actions = deque(maxlen=capacity)
+
+        # Deque circular para los estados sucesivos s_{t+1} tras ejecutar la acción
         self.next_states = deque(maxlen=capacity)
+
+        # Deque circular para las recompensas escalares r_{t+1} recibidas del entorno
         self.rewards = deque(maxlen=capacity)
+
+        # Deque circular para las banderas booleanas d_{t+1} (True si el episodio terminó o cayó al hoyo)
         self.dones = deque(maxlen=capacity)
 
+    # Método para registrar una transición física completa (tupla MDP: s, a, s', r, done)
     def store(self, state, action, next_state, reward, done):
         """Almacena una transición física completa."""
+        # Inserta el estado de origen al final de su respectiva cola
         self.states.append(state)
+
+        # Inserta la acción realizada
         self.actions.append(action)
+
+        # Inserta el estado resultante al que transicionó el agente
         self.next_states.append(next_state)
+
+        # Inserta la recompensa inmediata obtenida
         self.rewards.append(reward)
+
+        # Inserta el indicador de estado terminal
         self.dones.append(done)
 
+    # Método de extracción: toma un subconjunto aleatorio y lo transfiere directamente a la memoria de PyTorch
     def sample(self, batch_size: int, device: torch.device):
         """Muestreo uniforme sin reemplazo y conversión directa a tensores."""
-        indices = np.random.choice(len(self.dones), size=batch_size, replace=False)
-        
-        states = torch.stack([torch.as_tensor(self.states[i], dtype=torch.float32, device=device) for i in indices])
-        actions = torch.as_tensor([self.actions[i] for i in indices], dtype=torch.long, device=device)
-        next_states = torch.stack([torch.as_tensor(self.next_states[i], dtype=torch.float32, device=device) for i in indices])
-        rewards = torch.as_tensor([self.rewards[i] for i in indices], dtype=torch.float32, device=device)
-        dones = torch.as_tensor([self.dones[i] for i in indices], dtype=torch.bool, device=device)
-        
-        return states, actions, next_states, rewards, dones
-
-    def __len__(self):
-        return len(self.dones)
+        # Genera índices aleatorios uniformes sin repetir (sin reemplazo) dentro del rango disponible en memoria
 ```
 
 #### Celda 4: Código — Clase Completa del Agente DQN (DQN_Agent)
