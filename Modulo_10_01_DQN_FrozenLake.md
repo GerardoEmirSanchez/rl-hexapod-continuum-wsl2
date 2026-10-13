@@ -300,7 +300,63 @@ class DQNAgent:
 
     # Reduce la probabilidad de exploración tras concluir cada episodio
     def update_epsilon(self):
-        # Multiplica epsilon por su
+        # Multiplica epsilon por su tasa de decaimiento sin permitir que caiga por debajo de eps_min
+        self.epsilon = max(self.eps_min, self.epsilon * self.eps_decay)
+
+    # Método de aprendizaje: ejecuta el paso de optimización por gradiente sobre un mini-batch
+    def learn(self):
+        # Condición de Gating estricta: Memoria suficiente Y al menos un éxito observado
+        # Previene que la red se entrene con puros ceros antes de que el agente encuentre la meta por primera vez
+        if len(self.memory) < self.batch_size or sum(self.reward_history) == 0:
+            # Si no se cumple el gating, interrumpe la función sin calcular gradientes
+            return
+
+        # Muestrea un mini-batch aleatorio de transiciones de la memoria y lo carga al dispositivo
+        states, actions, next_states, rewards, dones = self.memory.sample(
+            self.batch_size, self.device
+        )
+        # Ajusta las dimensiones de [B] a [B, 1] para permitir operaciones matriciales columnares
+        actions = actions.unsqueeze(1)
+        rewards = rewards.unsqueeze(1)
+        dones = dones.unsqueeze(1)
+
+        # 1. Q Predicho por la Red Principal: Q(s, a; \theta)
+        # Evalúa todos los Q de cada estado y con 'gather' extrae únicamente el valor Q de la acción que se tomó
+        pred_q = self.main_net(states).gather(dim=1, index=actions)
+
+        # 2. Bellman Target mediante la Red Objetivo Congelada: r + \gamma \max Q(s', a'; \theta^-)
+        # Desactiva el cálculo de gradientes sobre la red objetivo para mantener fijos los targets
+        with torch.no_grad():
+            # Obtiene el valor Q máximo estimado sobre las acciones futuras en el estado siguiente s'
+            next_q = self.target_net(next_states).max(dim=1, keepdim=True)[0]
+            # Si el estado siguiente es terminal (dones=True), anula el valor futuro a 0.0
+            next_q[dones] = 0.0  # Estado terminal tiene valor futuro cero
+            # Calcula el objetivo de Bellman combinando la recompensa inmediata con el futuro descontado
+            target_q = rewards + self.gamma * next_q
+
+        # Calcula el Error Cuadrático Medio entre las predicciones actuales y el target de Bellman
+        loss = self.criterion(pred_q, target_q)
+
+        # 3. Optimización con Recorte de Gradiente (Gradient Clipping)
+        # Vaciado obligatorio de gradientes de la iteración previa
+        self.optimizer.zero_grad()
+        # Retropropagación automática mediante Autograd (calcula dLoss/dTheta)
+        loss.backward()
+        # Recorta la norma global del gradiente si supera 3.0 para evitar desbordes numéricos (NaN)
+        torch.nn.utils.clip_grad_norm_(
+            self.main_net.parameters(), self.clip_norm
+        )
+        # Paso de optimización: actualiza los pesos de la red principal usando el algoritmo Adam
+        self.optimizer.step()
+
+        # Registra el valor escalar de la pérdida en el historial para monitoreo
+        self.loss_history.append(loss.item())
+
+        # 4. Hard Target Update periódico
+        # Cada target_update_freq pasos (ej. cada 10 pasos), sincroniza rígidamente los pesos
+        if self.total_steps % self.target_update_freq == 0:
+            # Copia exacta de los parámetros de main_net hacia target_net
+            self.target_net.load_state_dict(self.main_net.state_dict())
 ```
 
 #### Celda 5: Código — Bucle de Entrenamiento y Evaluación Comparativa (FrozenLake 4x4 y 8x8)
