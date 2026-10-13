@@ -206,86 +206,101 @@ class ReplayMemory:
 # ============================================================================
 # CELDA 4: AGENTE DQN INTEGRAL (BELLMAN TARGET, CLIPPING Y HARD UPDATE)
 # ============================================================================
+
+# Definición de la clase maestra del agente que orquesta interacción, memoria y optimización
 class DQNAgent:
-    def __init__(self, env, lr=6e-4, gamma=0.93, batch_size=32, mem_capacity=4000,
-                 target_update_freq=10, eps_max=0.999, eps_min=0.01, eps_decay=0.999,
-                 clip_norm=3.0, dev=device):
+
+    # Constructor: inicializa hiperparámetros, redes, memoria y optimizador
+    def __init__(
+        self,
+        env,
+        lr=6e-4,
+        gamma=0.93,
+        batch_size=32,
+        mem_capacity=4000,
+        target_update_freq=10,
+        eps_max=0.999,
+        eps_min=0.01,
+        eps_decay=0.999,
+        clip_norm=3.0,
+        dev=device,
+    ):
+        # Guardamos la instancia del entorno Gymnasium (FrozenLake-v1)
         self.env = env
+        # Dispositivo de ejecución de tensores (CUDA GPU o CPU)
         self.device = dev
+        # Dimensión del espacio de observaciones discretas (ej. 64 estados para 8x8, 16 para 4x4)
         self.n_obs = env.observation_space.n
+        # Cantidad de acciones discretas posibles (ej. 4 direcciones: Izq, Abajo, Der, Arriba)
         self.n_act = env.action_space.n
-        
+
+        # Factor de descuento gamma (pondera recompensas futuras vs inmediatas)
         self.gamma = gamma
+        # Tamaño del mini-batch extraído del búfer en cada paso de aprendizaje
         self.batch_size = batch_size
+        # Frecuencia de sincronización de la Red Objetivo (Hard Update cada 10 pasos)
         self.target_update_freq = target_update_freq
+        # Probabilidad de exploración epsilon inicial (comienza explorando al 99.9%)
         self.epsilon = eps_max
+        # Límite inferior de exploración para mantener siempre una leve estocasticidad
         self.eps_min = eps_min
+        # Factor multiplicativo de decaimiento por episodio (decae suavemente hacia eps_min)
         self.eps_decay = eps_decay
+        # Umbral máximo permitido para la norma L2 del vector gradiente (Gradient Clipping)
         self.clip_norm = clip_norm
-        
-        # Red Principal y Red Objetivo
+
+        # Red Principal (Main Network): se actualiza con gradiente en cada paso
         self.main_net = DQN_Network(self.n_act, self.n_obs).to(self.device)
+        # Red Objetivo (Target Network): copia congelada dedicada solo a calcular el TD Target
         self.target_net = DQN_Network(self.n_act, self.n_obs).to(self.device)
+        # Copiamos los pesos iniciales idénticos de la red principal a la red objetivo
         self.target_net.load_state_dict(self.main_net.state_dict())
+        # Ponemos la red objetivo en modo evaluación (desactiva dropout/batchnorm si existieran)
         self.target_net.eval()
-        
+
+        # Instanciamos la memoria circular de repetición con la capacidad configurada (Celda 3)
         self.memory = ReplayMemory(mem_capacity)
+        # Optimizador Adam aplicado exclusivamente sobre los parámetros entrenables de la red principal
         self.optimizer = optim.Adam(self.main_net.parameters(), lr=lr)
+        # Función de pérdida: Error Cuadrático Medio (MSE) entre Q predicho y el Bellman Target
         self.criterion = nn.MSELoss()
-        
+
+        # Contador global acumulado de pasos de interacción en el entorno
         self.total_steps = 0
+        # Historial de telemetría de las pérdidas calculadas
         self.loss_history = []
+        # Historial de recompensas totales obtenidas por episodio
         self.reward_history = []
 
+    # Método de transformación: convierte el escalar discreto en un vector binario One-Hot
     def one_hot_encode(self, state: int) -> np.ndarray:
+        # Crea un vector de ceros con longitud igual al total de estados del entorno
         vec = np.zeros(self.n_obs, dtype=np.float32)
+        # Asigna 1.0 en la posición correspondiente al estado activo para garantizar ortogonalidad
         vec[state] = 1.0
+        # Retorna el arreglo numpy listo para ser convertido a tensor
         return vec
 
+    # Selección de acción según la política epsilon-greedy
     def select_action(self, state_vec: np.ndarray) -> int:
-        # Exploración Epsilon-Greedy
+        # Exploración Epsilon-Greedy: si un número aleatorio uniforme es menor a epsilon, explora al azar
         if np.random.random() < self.epsilon:
+            # Retorna una acción aleatoria muestreada del espacio del entorno
             return self.env.action_space.sample()
+        # Explotación: si no explora, infiere la mejor acción evaluando la red principal sin calcular gradientes
         with torch.no_grad():
-            s_t = torch.as_tensor(state_vec, dtype=torch.float32, device=self.device).unsqueeze(0)
+            # Convierte el vector One-Hot a tensor y añade la dimensión de lote [1, N]
+            s_t = torch.as_tensor(
+                state_vec, dtype=torch.float32, device=self.device
+            ).unsqueeze(0)
+            # Evalúa la red principal para obtener los 4 valores Q estimados
             q_vals = self.main_net(s_t)
+            # Selecciona greedymente la acción con el valor Q más alto (argmax)
             return torch.argmax(q_vals).item()
 
+    # Reduce la probabilidad de exploración tras concluir cada episodio
     def update_epsilon(self):
-        self.epsilon = max(self.eps_min, self.epsilon * self.eps_decay)
-
-    def learn(self):
-        # Condición de Gating estricta: Memoria suficiente Y al menos un éxito observado
-        if len(self.memory) < self.batch_size or sum(self.reward_history) == 0:
-            return
-
-        states, actions, next_states, rewards, dones = self.memory.sample(self.batch_size, self.device)
-        actions = actions.unsqueeze(1)
-        rewards = rewards.unsqueeze(1)
-        dones = dones.unsqueeze(1)
-
-        # 1. Q Predicho por la Red Principal: Q(s, a; \theta)
-        pred_q = self.main_net(states).gather(dim=1, index=actions)
-
-        # 2. Bellman Target mediante la Red Objetivo Congelada: r + \gamma \max Q(s', a'; \theta^-)
-        with torch.no_grad():
-            next_q = self.target_net(next_states).max(dim=1, keepdim=True)[0]
-            next_q[dones] = 0.0  # Estado terminal tiene valor futuro cero
-            target_q = rewards + self.gamma * next_q
-
-        loss = self.criterion(pred_q, target_q)
-
-        # 3. Optimización con Recorte de Gradiente (Gradient Clipping)
-        self.optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.main_net.parameters(), self.clip_norm)
-        self.optimizer.step()
-
-        self.loss_history.append(loss.item())
-
-        # 4. Hard Target Update periódico
-        if self.total_steps % self.target_update_freq == 0:
-            self.target_net.load_state_dict(self.main_net.state_dict())
+        # Multiplica epsilon por su
 ```
 
 #### Celda 5: Código — Bucle de Entrenamiento y Evaluación Comparativa (FrozenLake 4x4 y 8x8)
